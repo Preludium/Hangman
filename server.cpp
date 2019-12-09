@@ -7,21 +7,20 @@
 #include <unistd.h>
 #include <vector>
 #include <mutex>
-#include <condition_variable>
+#include <ctime>
+#include <sys/epoll.h>
 
 #define ACCEPT "ACCEPT"
-#define REFUSE 
+#define REFUSE "REFUSE"
 
 using namespace std;
 const int one = 1;
 
 int sock;
 vector<int> waitingClients, playingClients;
-// cykl: waiting > connected > playing
 
 thread newClientsThread, gameThread;
 mutex waitingClientMtx;
-condition_variable cv;
 
 void handleNewConnections() {
     int clientSock;
@@ -35,24 +34,43 @@ void handleNewConnections() {
 
         write(clientSock, ACCEPT, sizeof(ACCEPT));
 
-        unique_lock<mutex> lock(waitingClientMtx);
-        cv.wait(lock);
+        waitingClientMtx.lock();
         waitingClients.push_back(clientSock);
-        
+        waitingClientMtx.unlock();
     }
 }
 
 void handleGame() {
-    vector<int> newClients;
+    clock_t begClk, endClk;
     while (true) {
-        // Add clients from last session to new session
-        newClients = waitingClients;
-        waitingClients.clear();
-        for (int i = 0; i < playingClients.size(); ++i)
-            waitingClients.push_back(playingClients.at(i));
-        playingClients = newClients;
-        
-        // 
+        // waitingClients moved from waiting room to new game
+        // playingClients moved from last game to waiting room
+        waitingClientMtx.lock();
+        swap(waitingClients, playingClients);
+        waitingClientMtx.unlock();
+
+        // set epoll for new session countdown
+        int newGameEpoll = epoll_create1(0);
+
+        epoll_event event;
+        event.events = EPOLLIN;
+        event.data.fd = sock;
+
+        for (int i=0; i<waitingClients.size(); ++i)
+            epoll_ctl(newGameEpoll, EPOLL_CTL_ADD, waitingClients.at(i), &event);
+
+        // run countdown to start new game session
+        begClk = clock();
+        endClk = clock();
+        while ((endClk - begClk) / CLOCKS_PER_SEC < 30) {
+            while (epoll_wait(newGameEpoll, &event, 1, -1) > 0) {
+                // TODO
+            }
+        }
+
+        // TODO: kick clients that are not ready
+        // TODO: run game
+
     }
 }
 
@@ -82,6 +100,7 @@ int main() {
     gameThread = thread(handleGame);
 
     newClientsThread.join();
+    gameThread.join();
 
     return 0;
 }
