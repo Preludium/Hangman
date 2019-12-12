@@ -9,9 +9,12 @@
 #include <mutex>
 #include <ctime>
 #include <sys/epoll.h>
+#include <algorithm>
 
-#define ACCEPT "ACCEPT"
-#define REFUSE "REFUSE"
+#define ACCEPT "ACCEPT\0"
+#define REFUSE "REFUSE\0"
+#define MAX_LEN 8
+#define MAX_EVENTS 8
 
 using namespace std;
 const int one = 1;
@@ -41,7 +44,6 @@ void handleNewConnections() {
 }
 
 void handleGame() {
-    clock_t begClk, endClk;
     while (true) {
         // waitingClients moved from waiting room to new game
         // playingClients moved from last game to waiting room
@@ -52,20 +54,39 @@ void handleGame() {
         // set epoll for new session countdown
         int newGameEpoll = epoll_create1(0);
 
-        epoll_event event;
+        epoll_event event, events[MAX_EVENTS];
         event.events = EPOLLIN;
         event.data.fd = sock;
 
         for (int i=0; i<waitingClients.size(); ++i)
             epoll_ctl(newGameEpoll, EPOLL_CTL_ADD, waitingClients.at(i), &event);
 
-        // run countdown to start new game session
-        begClk = clock();
-        endClk = clock();
-        while ((endClk - begClk) / CLOCKS_PER_SEC < 30) {
-            while (epoll_wait(newGameEpoll, &event, 1, -1) > 0) {
-                // TODO
+        int events = 0;
+        char message[MAX_LEN];
+        clock_t begClk = clock();
+
+        // run countdown to start new game session (NEEDS CHECK)
+        while ((clock() - begClk) / CLOCKS_PER_SEC < 30) {
+            events = epoll_wait(newGameEpoll, &events, MAX_EVENTS, 0);
+            
+            for (int i=0; i<events; ++i) {
+                message = read(events[i], message, MAX_LEN);
+                printf("Request from socket %d: %s\n", events[i], message);
+
+                // check request content
+                if (strcmp(message, ACCEPT) == 0) {
+                    
+                    // move client from waiting to playing
+                    waitingClients.erase(remove(waitingClients.begin(), waitingClients.end(),
+                        events[i].data.fd), waitingClients.end());
+                    playingClients.push_back(events[i].data.fd);
+                    
+                    // delete client's epoll
+                    epoll_ctl(newGameEpoll, EPOLL_CTL_DEL, events[i].data.fd, NULL);
+                }
+                
             }
+            printf("%d\n", clock() - begClk);
         }
 
         // TODO: kick clients that are not ready
