@@ -24,11 +24,11 @@ using namespace std;
 const int one = 1;
 
 int serverSocket;
-bool isGame = false;
+bool isCountdown = false;
 vector<int> waitingClients, playingClients;
 
 thread newClientsThread, gameThread;
-mutex clientsMtx, isGameMtx;
+mutex clientsMtx, countdownMtx;
 
 void handleNewConnections() {
     int clientSock;
@@ -43,8 +43,8 @@ void handleNewConnections() {
         printf("New client connected on socket %d\n", clientSock);
         write(clientSock, ACCEPT, sizeof(ACCEPT));
 
-        isGameMtx.lock();
-        if (isGame) {
+        countdownMtx.lock();
+        if (isCountdown) {
             clientsMtx.lock();
             playingClients.push_back(clientSock);
             clientsMtx.unlock();
@@ -53,7 +53,7 @@ void handleNewConnections() {
             waitingClients.push_back(clientSock);
             clientsMtx.unlock();
         }
-        isGameMtx.unlock();
+        countdownMtx.unlock();
         
     }
 }
@@ -71,10 +71,10 @@ void handleGame() {
 
         printf("%d connected clients, preparing for a new game\n", connectedClients);
 
-        // notify game start
-        isGameMtx.lock();
-        isGame = true;
-        isGameMtx.unlock();
+        // notify countdown start
+        countdownMtx.lock();
+        isCountdown = true;
+        countdownMtx.unlock();
 
         // waitingClients moved from waiting room to new game
         // playingClients moved from last game to waiting room
@@ -139,6 +139,11 @@ void handleGame() {
 
         close(newGameEpoll);
 
+        // notify countdown stop
+        countdownMtx.lock();
+        isCountdown = false;
+        countdownMtx.unlock();
+
         // kick waiting clients that didn't declare their readiness
         printf("Checking waiting clients\n");
         clientsMtx.lock();
@@ -155,9 +160,6 @@ void handleGame() {
         if (playingClients.size() < 2) {
             printf("Not enough players, canceling game\n");
             clientsMtx.unlock();
-            isGameMtx.lock();
-            isGame = true;
-            isGameMtx.unlock();
             continue;
         }
 
@@ -166,10 +168,6 @@ void handleGame() {
         // TODO: implement game
         printf("Starting new game\n");
         printf("Game finished\n");
-
-        isGameMtx.lock();
-        isGame = false;
-        isGameMtx.unlock();
 
     }
 }
