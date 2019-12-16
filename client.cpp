@@ -75,7 +75,7 @@ int main() {
 
     while(true) {
         int resultCount = epoll_wait(fd, &event, 1, 0);    
-        printf("%d\n", resultCount);   
+        //printf("%d\n", resultCount);   
         if( event.events & EPOLLIN && event.data.fd == clientSocket ){  
             // read from socket, write to stdout
             ssize_t bufsize1 = MAX_LEN, received1;
