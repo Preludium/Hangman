@@ -11,6 +11,7 @@
 #include <sys/epoll.h>
 #include <algorithm>
 #include <string.h>
+#include <fstream>
 
 #define ACCEPT "ACCEPT\n"
 #define REFUSE "REFUSE\n"
@@ -26,9 +27,23 @@ const int one = 1;
 int serverSocket;
 bool isCountdown = false;
 vector<int> waitingClients, playingClients;
+vector<string> database;
 
 thread newClientsThread, gameThread;
 mutex clientsMtx, countdownMtx;
+
+bool readDatabase(string filename) {
+    ifstream file(filename);
+    if (file.good()) {
+        string word;
+        while (!file.eof()) {
+            file >> word;
+            database.push_back(word);
+        }
+        return true;
+    }
+    return false;
+}
 
 void handleNewConnections() {
     int clientSock;
@@ -165,14 +180,21 @@ void handleGame() {
 
         clientsMtx.unlock();
 
-        // TODO: implement game
         printf("Starting new game\n");
+        // TODO: choose random word
+        // TODO: inform players, that a new game started
+        printf("GO!\n");
+        // TODO: wait for events and give appropriate answer to clients
+        // TODO: if no players stay active, finish the game
         printf("Game finished\n");
-
+        // TODO: inform players, that the game has finished and send leaderboard
     }
 }
 
-int main() {
+int main(int argc, char** argv) {
+    // TODO: parse arguments: 1 - database file, 2 - settings file (optional)
+    readDatabase("database.txt");
+
     serverSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
     if (serverSocket == -1) {

@@ -1,0 +1,10 @@
+computer
+monitor
+keyboard
+mouse
+speakers
+headphones
+printer
+drive
+scanner
+joystick
