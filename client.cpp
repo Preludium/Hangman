@@ -74,7 +74,7 @@ int main() {
     epoll_ctl(fd, EPOLL_CTL_ADD, 0, &event);
 
     while(true) {
-        int resultCount = epoll_wait(fd, &event, 1, 0);    
+        int resultCount = epoll_wait(fd, &event, 1, 1);    
         //printf("%d\n", resultCount);   
         if( event.events & EPOLLIN && event.data.fd == clientSocket ){  
             // read from socket, write to stdout

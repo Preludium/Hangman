@@ -4,6 +4,7 @@
         "iosfwd": "cpp",
         "fstream": "cpp",
         "*.tcc": "cpp",
-        "condition_variable": "cpp"
+        "condition_variable": "cpp",
+        "thread": "cpp"
     }
 }

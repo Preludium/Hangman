@@ -237,6 +237,13 @@ void handleGame() {
             eventCount = epoll_wait(countdownEpoll, events, MAX_EVENTS, 0);
 
             for (int i=0; i<eventCount; ++i) {
+                if (errno == EBADF) {
+                    printf("Kick\n");
+                    deleteClient(events[i]);
+                    epoll_ctl(countdownEpoll, EPOLL_CTL_DEL, events[i].data.fd, NULL);
+                    continue;
+                }
+
                 int len = read(events[i].data.fd, message, MAX_LEN);
                 if (len == -1) {
                     close(events[i].data.fd);
