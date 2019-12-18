@@ -100,25 +100,21 @@ void handleGame() {
         printf("Begin countdown\n");
         while (elapsed < COUNTDOWN_TIME) {
             int ready = poll(ppoll, clients, 0);
-            //printf("PO POLLU\n");
 
             if (ready == -1) {
                 perror("Poll error");
                 exit(1);
             }
             else if (ready > 0) {
-                //printf("Ready events: %d\n", ready);
-                for (pollfd & pfd : ppoll) {
-                    //printf("%d\n", pfd.revents);
-
-                    if(pfd.revents == POLLIN) {
-                        if (pfd.fd >= 0) {
-                            int len = read(pfd.fd, buffer, 16);
-                            write(1, buffer, len);
-                        } else {
-                            printf("error\n");
-                            close(pfd.fd);
-                        }
+                printf("Ready events: %d\n", ready);
+                for (int i=0; i<clients; ++i) {
+                    if (ppoll[i].revents & POLLIN) {
+                        int len = read(ppoll[i].fd, buffer, 16);
+                        write(1, buffer, len);
+                    }
+                    if (ppoll[i].revents & POLLHUP) {
+                        perror("Descriptor not found");
+                        exit(1);
                     }
 
                     // if(pfd.revents & POLLERR) {
