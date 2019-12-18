@@ -13,6 +13,16 @@
 #include <string.h>
 #include <fstream>
 #include <fcntl.h>
+#include <poll.h>
+
+#define RED   "\x1B[31m"
+#define GRN   "\x1B[32m"
+#define YEL   "\x1B[33m"
+#define BLU   "\x1B[34m"
+#define MAG   "\x1B[35m"
+#define CYN   "\x1B[36m"
+#define WHT   "\x1B[37m"
+#define RESET "\x1B[0m"
 
 #define ACCEPT "ACCEPT\n"
 #define REFUSE "REFUSE\n"
@@ -45,10 +55,11 @@ int main(int argc, char** argv) {
     // TODO: parse arguments: 1 - database file, 2 - settings file (optional)
     readDatabase("database.txt");
 
+    fcntl(0, F_SETFL, O_NONBLOCK);
     serverSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
     if (serverSocket == -1) {
-        perror("Socket creation error");
+        perror(RED "Socket creation error" RESET);
         exit(EXIT_FAILURE);
     }
 
@@ -61,7 +72,7 @@ int main(int argc, char** argv) {
     addr.sin_port = htons(8080);
 
     if (bind(serverSocket, (sockaddr*) &addr, sizeof(addr)) == -1) {
-        perror("Bind socket error");
+        perror(RED "Bind socket error" RESET);
         exit(EXIT_FAILURE);
     }
 
@@ -91,16 +102,15 @@ bool readDatabase(string filename) {
 }
 
 void handleNewConnections() {
-    int clientSock;
     while(true) {
-        clientSock = accept(serverSocket, nullptr, nullptr);
+        int clientSock = accept(serverSocket, nullptr, nullptr);
 
         if (clientSock == -1) {
-            perror("Client socket creation error");
+            perror(RED "Client socket creation error" RESET);
             continue;
         }
 
-        printf("New client connected on socket %d\n", clientSock);
+        printf(GRN "New client connected on socket %d\n" RESET, clientSock);
         write(clientSock, ACCEPT, sizeof(ACCEPT));
 
         countdownMtx.lock();
@@ -120,14 +130,14 @@ void handleNewConnections() {
 
 // wait for at least 2 clients
 void waitForClients() {
-    printf("Waiting for at least 2 connected clients\n");
+    printf("Waiting for at least 2 connected clients...\n");
     int connectedClients = 0;
     while (connectedClients < 2) {
         clientsMtx.lock();
         connectedClients = waitingClients.size() + playingClients.size();
         clientsMtx.unlock();
     }
-    printf("%d connected clients, preparing for a new game\n", connectedClients);
+    printf("%d connected clients, preparing for a new game...\n", connectedClients);
 }
 
 // notify whether countdown is on or not
@@ -144,43 +154,29 @@ void swapClients() {
     clientsMtx.unlock();
 }
 
-// set epoll for a new session countdown
-int setUpCountdownEpoll(vector<int> *clients) {
-    int newEpoll = epoll_create1(0);
-    epoll_event eevent;
-    eevent.events = EPOLLIN;
-    eevent.data.fd = serverSocket;
-
-    clientsMtx.lock();
-    for (int i=0; i<clients->size(); ++i)
-        epoll_ctl(newEpoll, EPOLL_CTL_ADD, clients->at(i), &eevent);
-    clientsMtx.unlock();
-
-    return newEpoll;
-}
-
 // delete client from waiting room
-void deleteClient(epoll_event event) {
+void deleteClient(pollfd* pfd) {
     clientsMtx.lock();
-    auto pos = find(waitingClients.begin(), waitingClients.end(), event.data.fd);
-    if (pos != waitingClients.end())
-        waitingClients.erase(pos);
+    auto pos = find(waitingClients.begin(), waitingClients.end(), pfd->fd);
+    waitingClients.erase(pos, pos+1);
     clientsMtx.unlock();
-    close(event.data.fd);
+    close(pfd->fd);
+    pfd = {};
 }
 
 // move client from waiting to playing
-void moveClient(epoll_event event) {
+void moveClient(pollfd* pfd) {
     clientsMtx.lock();
-    auto pos = find(waitingClients.begin(), waitingClients.end(), event.data.fd);
+    auto pos = find(waitingClients.begin(), waitingClients.end(), pfd->fd);
     if (pos != waitingClients.end()) waitingClients.erase(pos);
-    playingClients.push_back(event.data.fd);
+    playingClients.push_back(pfd->fd);
     clientsMtx.unlock();
+    pfd = {};
 }
 
 // kick inactive clients and return, whether enough clients are left
 bool kickInactiveClients() {
-    printf("Checking waiting clients\n");
+    printf("Countdown finished, checking waiting clients...\n");
     clientsMtx.lock();
 
     if (waitingClients.size() == 0)
@@ -224,72 +220,95 @@ void handleGame() {
         notifyCountdown(true);
         swapClients();
     
-        int countdownEpoll = setUpCountdownEpoll(&waitingClients);
-        epoll_event events[MAX_EVENTS];
-        int eventCount = 0, seconds = 0, elapsed;
+        clientsMtx.lock();
+        int clients = waitingClients.size();
+        pollfd *ppoll = new pollfd[clients]{};
+        for (int i=0; i<clients; ++i) {
+            ppoll[i].fd = waitingClients.at(i);
+            ppoll[i].events = POLLIN;
+        }
+        clientsMtx.unlock();
+
         char message[MAX_LEN];
-
-        printf("Starting countdown\n");
         clock_t begClk = clock();
-        elapsed = (clock() - begClk) / CLOCKS_PER_SEC;
+        int seconds = 0, elapsed = (clock() - begClk) / CLOCKS_PER_SEC;
 
+        printf("Starting countdown...\n");
         while (elapsed < COUNTDOWN_TIME) {
-            eventCount = epoll_wait(countdownEpoll, events, MAX_EVENTS, 0);
+            int ready = poll(ppoll, clients, 0);
+            if (ready == -1) {
+                perror(RED "Poll error" RESET);
+                exit(1);
+            }
 
-            for (int i=0; i<eventCount; ++i) {
-                if (errno == EBADF) {
-                    printf("Kick\n");
-                    deleteClient(events[i]);
-                    epoll_ctl(countdownEpoll, EPOLL_CTL_DEL, events[i].data.fd, NULL);
-                    continue;
+            else if (ready > 0) {
+                printf("Ready events: %d\n", ready);
+                for (int i=0; i<clients; ++i) {
+                    if (ppoll[i].revents & POLLIN) {
+                        int len = read(ppoll[i].fd, message, MAX_LEN);
+                        if (len <= 0) {
+                            printf(RED "Poll read error, closing socket %d\n" RESET, ppoll[i].fd);
+                            clientsMtx.lock();
+                            auto pos = find(waitingClients.begin(), waitingClients.end(), ppoll[i].fd);
+                            waitingClients.erase(pos, pos+1);
+                            clientsMtx.unlock();
+                            close(ppoll[i].fd);
+                            ppoll[i] = {};
+                        } else {
+                            printf("Poll on socket %d: %.*s", ppoll[i].fd, len, message);
+                            if (strncmp(message, ACCEPT, sizeof(ACCEPT)) == 0) {
+                                clientsMtx.lock();
+                                auto pos = find(waitingClients.begin(), waitingClients.end(), ppoll[i].fd);
+                                if (pos != waitingClients.end()) waitingClients.erase(pos);
+                                playingClients.push_back(ppoll[i].fd);
+                                clientsMtx.unlock();
+                                ppoll[i] = {};
+                            }
+                        }
+                    }
                 }
-
-                int len = read(events[i].data.fd, message, MAX_LEN);
-                if (len == -1) {
-                    close(events[i].data.fd);
-                    deleteClient(events[i]);
-                    epoll_ctl(countdownEpoll, EPOLL_CTL_DEL, events[i].data.fd, NULL);
-                    continue;
-                }
-
-                printf("Request from socket %d: %s\n", events[i].data.fd, message);
-                if (strncmp(message, ACCEPT, sizeof(ACCEPT)) == 0) {
-                    moveClient(events[i]);
-                    epoll_ctl(countdownEpoll, EPOLL_CTL_DEL, events[i].data.fd, NULL);
-                }
-                
             }
 
             elapsed = (clock() - begClk) / CLOCKS_PER_SEC;
             if (elapsed > seconds)
-                printf("Time elapsed: %d\n", ++seconds);
+                printf(YEL "Time elapsed: %d\n" RESET, ++seconds);
 
         }
 
-        close(countdownEpoll);
+        delete[] ppoll;
+        
         notifyCountdown(false);
-
         if (!kickInactiveClients())
             continue;
 
-        printf("Starting new game\n");
+        printf("Starting new game...\n");
         int wordNumber = rand() % database.size();
         
-        int gameEpoll = setUpCountdownEpoll(&waitingClients);
-        eventCount = 0; seconds = 0;
+        clientsMtx.lock();
+        clients = playingClients.size();
+        ppoll = new pollfd[clients]{};
+        for (int i=0; i<clients; ++i) {
+            ppoll[i].fd = playingClients.at(i);
+            ppoll[i].events = POLLIN;
+        }
+        clientsMtx.unlock();
 
         printf("GO!\n");
         notifyNewGame();
 
         begClk = clock();
-        elapsed = (clock() - begClk) / CLOCKS_PER_SEC;
+        seconds = 0; elapsed = (clock() - begClk) / CLOCKS_PER_SEC;
         while (elapsed < GAME_TIME) {
             // TODO: wait for events and give appropriate answer to clients
             // TODO: if no players stay active, finish the game
+
             elapsed = (clock() - begClk) / CLOCKS_PER_SEC;
+            if (elapsed > seconds)
+                printf(YEL "Time elapsed: %d\n" RESET, ++seconds);
         }
 
-        close(gameEpoll);
+        delete[] ppoll;
+
         printf("Game finished\n");
         notifyGameOver();
     }
