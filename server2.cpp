@@ -7,9 +7,18 @@
 #include <vector>
 #include <mutex>
 #include <ctime>
-#include <sys/epoll.h>
 #include <poll.h>
-#include <signal.h>
+#include <fcntl.h>
+#include <algorithm>
+
+#define RED   "\x1B[31m"
+#define GRN   "\x1B[32m"
+#define YEL   "\x1B[33m"
+#define BLU   "\x1B[34m"
+#define MAG   "\x1B[35m"
+#define CYN   "\x1B[36m"
+#define WHT   "\x1B[37m"
+#define RESET "\x1B[0m"
 
 #define COUNTDOWN_TIME 5
 
@@ -19,17 +28,18 @@ const int one = 1;
 int serverSocket;
 vector<int> waitingClients;
 thread newClientsThread, gameThread;
-mutex clientsMtx, countdownMtx, handlerMtx;
+mutex clientsMtx, countdownMtx;
 
 void handleNewConnections();
 void handleGame();
 
 int main(int argc, char** argv) {
 
+    fcntl(0, F_SETFL, O_NONBLOCK);
     serverSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
     if (serverSocket == -1) {
-        perror("Socket creation error");
+        perror(RED "Socket creation error" RESET);
         exit(EXIT_FAILURE);
     }
 
@@ -42,7 +52,7 @@ int main(int argc, char** argv) {
     addr.sin_port = htons(8080);
 
     if (bind(serverSocket, (sockaddr*) &addr, sizeof(addr)) == -1) {
-        perror("Bind socket error");
+        perror(RED "Bind socket error" RESET);
         exit(EXIT_FAILURE);
     }
 
@@ -63,11 +73,11 @@ void handleNewConnections() {
         int clientSock = accept(serverSocket, nullptr, nullptr);
 
         if (clientSock == -1) {
-            perror("Client socket creation error");
+            perror(RED "Client socket creation error" RESET);
             continue;
         }
 
-        printf("New client connected on socket %d\n", clientSock);
+        printf(MAG "New client connected on socket %d\n" RESET, clientSock);
         write(clientSock, "ACCEPT\n", sizeof("ACCEPT\n"));
 
         clientsMtx.lock();
@@ -101,28 +111,25 @@ void handleGame() {
         while (elapsed < COUNTDOWN_TIME) {
             int ready = poll(ppoll, clients, 0);
             if (ready == -1) {
-                perror("Poll error");
+                perror(RED "Poll error" RESET);
                 exit(1);
             }
 
             else if (ready > 0) {
                 printf("Ready events: %d\n", ready);
-                for (int i=0; i<clients; ++i) {
-                    if (ppoll[i].revents & POLLIN) {
-                        int len = read(ppoll[i].fd, buffer, 16);
-                        write(1, buffer, len);
-                    }
-                    if (ppoll[i].revents & POLLERR) {
-                        printf("POLLERR\n");
-                        exit(1);
-                    }
-                    if (ppoll[i].revents & POLLHUP) {
-                        printf("POLLHUP\n");
-                        exit(1);
-                    }
-                    if (ppoll[i].revents & POLLNVAL) {
-                        printf("POLLNVAL\n");
-                        exit(1);
+                for (pollfd &pfd : ppoll) {
+                    if (pfd.revents & POLLIN) {
+                        printf("POLLIN on socket %d, revents=%d\n", pfd.fd, pfd.revents);
+                        int len = read(pfd.fd, buffer, 16);
+                        if (len <= 0) {
+                            printf(RED "Poll read error, closing socket %d\n" RESET, pfd.fd);
+                            auto pos = find(waitingClients.begin(), waitingClients.end(), pfd.fd);
+                            waitingClients.erase(pos, pos+1);
+                            close(pfd.fd);
+                            pfd = {};
+                        } else {
+                            printf("Poll on socket %d: %.*s", pfd.fd, len, buffer);
+                        }
                     }
 
                 }
@@ -130,7 +137,7 @@ void handleGame() {
 
             elapsed = (clock() - begClk) / CLOCKS_PER_SEC;
             if (elapsed > seconds)
-                printf("Time elapsed: %d\n", ++seconds);
+                printf(YEL "Time elapsed: %d\n" RESET, ++seconds);
 
         }
         printf("End countdown\n");
