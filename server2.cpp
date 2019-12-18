@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
     }
 
     printf("Starting server on socket %d\n", serverSocket);
-    //setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+    setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
 
     sockaddr_in addr;
     addr.sin_family = AF_INET;
@@ -100,11 +100,11 @@ void handleGame() {
         printf("Begin countdown\n");
         while (elapsed < COUNTDOWN_TIME) {
             int ready = poll(ppoll, clients, 0);
-
             if (ready == -1) {
                 perror("Poll error");
                 exit(1);
             }
+
             else if (ready > 0) {
                 printf("Ready events: %d\n", ready);
                 for (int i=0; i<clients; ++i) {
@@ -112,20 +112,18 @@ void handleGame() {
                         int len = read(ppoll[i].fd, buffer, 16);
                         write(1, buffer, len);
                     }
-                    if (ppoll[i].revents & POLLHUP) {
-                        perror("Descriptor not found");
+                    if (ppoll[i].revents & POLLERR) {
+                        printf("POLLERR\n");
                         exit(1);
                     }
-
-                    // if(pfd.revents & POLLERR) {
-                    //     printf("POLLERR\n");
-                    //     exit(1);
-                    // }
-
-                    // if(pfd.revents & POLLHUP) {
-                    //     printf("POLLHUP\n");
-                    //     exit(1);
-                    // }
+                    if (ppoll[i].revents & POLLHUP) {
+                        printf("POLLHUP\n");
+                        exit(1);
+                    }
+                    if (ppoll[i].revents & POLLNVAL) {
+                        printf("POLLNVAL\n");
+                        exit(1);
+                    }
 
                 }
             }
