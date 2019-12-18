@@ -9,6 +9,7 @@
 #include <ctime>
 #include <sys/epoll.h>
 #include <poll.h>
+#include <signal.h>
 
 #define COUNTDOWN_TIME 5
 
@@ -18,7 +19,7 @@ const int one = 1;
 int serverSocket;
 vector<int> waitingClients;
 thread newClientsThread, gameThread;
-mutex clientsMtx, countdownMtx;
+mutex clientsMtx, countdownMtx, handlerMtx;
 
 void handleNewConnections();
 void handleGame();
@@ -33,7 +34,7 @@ int main(int argc, char** argv) {
     }
 
     printf("Starting server on socket %d\n", serverSocket);
-    setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+    //setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
 
     sockaddr_in addr;
     addr.sin_family = AF_INET;
@@ -58,9 +59,8 @@ int main(int argc, char** argv) {
 }
 
 void handleNewConnections() {
-    int clientSock;
     while(true) {
-        clientSock = accept(serverSocket, nullptr, nullptr);
+        int clientSock = accept(serverSocket, nullptr, nullptr);
 
         if (clientSock == -1) {
             perror("Client socket creation error");
@@ -73,9 +73,8 @@ void handleNewConnections() {
         clientsMtx.lock();
         waitingClients.push_back(clientSock);
         clientsMtx.unlock();
-        
     }
-}
+} 
 
 void handleGame() {
     while (true) {
@@ -85,10 +84,10 @@ void handleGame() {
         clientsMtx.lock();
 
         int clients = waitingClients.size();
-        pollfd *ppoll = new pollfd[clients];
+        pollfd ppoll[5]{};
         for (int i=0; i<clients; ++i) {
             ppoll[i].fd = waitingClients.at(i);
-            ppoll[i].events = POLLNVAL;
+            ppoll[i].events = POLLIN;
         }
 
         clientsMtx.unlock();
@@ -100,23 +99,38 @@ void handleGame() {
 
         printf("Begin countdown\n");
         while (elapsed < COUNTDOWN_TIME) {
-            int ready = poll(ppoll, clients, -1);
+            int ready = poll(ppoll, clients, 0);
+            //printf("PO POLLU\n");
 
             if (ready == -1) {
                 perror("Poll error");
                 exit(1);
             }
             else if (ready > 0) {
-                printf("Ready events: %d\n", ready);
-                for (int i=0; i<clients; ++i) {
-                    if (ppoll[i].revents & POLLIN) {
-                        int len = read(ppoll[i].fd, buffer, 16);
-                        write(1, buffer, len);
+                //printf("Ready events: %d\n", ready);
+                for (pollfd & pfd : ppoll) {
+                    //printf("%d\n", pfd.revents);
+
+                    if(pfd.revents == POLLIN) {
+                        if (pfd.fd >= 0) {
+                            int len = read(pfd.fd, buffer, 16);
+                            write(1, buffer, len);
+                        } else {
+                            printf("error\n");
+                            close(pfd.fd);
+                        }
                     }
-                    if (ppoll[i].revents & POLLNVAL) {
-                        perror("Descriptor not found");
-                        exit(1);
-                    }
+
+                    // if(pfd.revents & POLLERR) {
+                    //     printf("POLLERR\n");
+                    //     exit(1);
+                    // }
+
+                    // if(pfd.revents & POLLHUP) {
+                    //     printf("POLLHUP\n");
+                    //     exit(1);
+                    // }
+
                 }
             }
 
@@ -126,7 +140,5 @@ void handleGame() {
 
         }
         printf("End countdown\n");
-
-        delete[] ppoll;
     }
 }
