@@ -14,7 +14,7 @@
     </rowConstraints>
     <BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" prefHeight="390.0" prefWidth="700.0">
         <right>
-            <TextArea fx:id="scoreBoard" editable="false" focusTraversable="false" mouseTransparent="true" prefHeight="260.0" prefWidth="201.0" promptText="Top scores" BorderPane.alignment="CENTER" />
+            <TextArea fx:id="scoreBoard" editable="false" focusTraversable="false" mouseTransparent="true" prefHeight="260.0" prefWidth="201.0" BorderPane.alignment="CENTER" />
         </right>
         <bottom>
             <GridPane alignment="CENTER" prefHeight="99.0" prefWidth="701.0" BorderPane.alignment="CENTER">
@@ -32,9 +32,9 @@
                     <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                 </rowConstraints>
 
-                <Label fx:id="msgLbl" alignment="CENTER" contentDisplay="CENTER" text="CoUNTdown/messages" textAlignment="CENTER" GridPane.columnIndex="1" GridPane.halignment="CENTER" />
-                <Button fx:id="readyBtn" mnemonicParsing="false" prefHeight="27.0" prefWidth="199.0" text="Ready" GridPane.columnIndex="3" />
-                <TextField fx:id="inputEdit" alignment="CENTER" promptText="letters/set nick" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+                <Label fx:id="msgLbl" alignment="CENTER" contentDisplay="CENTER" textAlignment="CENTER" GridPane.columnIndex="1" GridPane.halignment="CENTER" />
+                <Button fx:id="readyBtn" disable="true" mnemonicParsing="false" prefHeight="27.0" prefWidth="199.0" text="Ready" GridPane.columnIndex="3" />
+                <TextField fx:id="inputEdit" alignment="CENTER" GridPane.columnIndex="1" GridPane.rowIndex="2" />
                 <Button fx:id="sendBtn" mnemonicParsing="false" text="Send" GridPane.columnIndex="2" GridPane.rowIndex="2" />
             </GridPane>
         </bottom>
@@ -44,7 +44,7 @@
                     <ImageView fx:id="imageView" fitHeight="224.0" fitWidth="340.0" pickOnBounds="true" preserveRatio="true" BorderPane.alignment="CENTER" />
                 </center>
                 <bottom>
-                    <Label fx:id="phraseLbl" alignment="CENTER" prefHeight="45.0" prefWidth="377.0" text="Phrase label" BorderPane.alignment="CENTER">
+                    <Label fx:id="phraseLbl" alignment="CENTER" prefHeight="45.0" prefWidth="377.0" BorderPane.alignment="CENTER">
                         <font>
                             <Font size="19.0" />
                         </font>

@@ -26,7 +26,7 @@ public class Controller implements Initializable {
     @FXML
     private Button readyBtn;
     @FXML
-    private TextField inputEdit;
+    public TextField inputEdit;
     @FXML
     private TextArea scoreBoard;
 

@@ -19,9 +19,8 @@ public abstract class NetworkConnection {
     }
 
     public void send(String data) {
-        //not working
         connThread.out.print(data);
-        System.out.println("Data sent");
+        connThread.out.flush();
     }
 
     public void closeConnection() throws Exception {
@@ -41,20 +40,22 @@ public abstract class NetworkConnection {
         public void run() {
             try (Socket socket = new Socket(getIP(), getPort());
                 BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                PrintWriter out = new PrintWriter(socket.getOutputStream(), true)) {
+                PrintWriter out = new PrintWriter(socket.getOutputStream())) {
 
                 this.socket = socket;
                 this.out = out;
 
                 socket.setTcpNoDelay(true);
                 while(true) {
+//                    if (!socket.getInetAddress().isReachable(5))
+//                        onReceiveCallback.accept("SERVER CLOSED");
+
                     String line = in.readLine();
                     onReceiveCallback.accept(line);
                 }
-//                System.out.println("End of thread loop");
             } catch (Exception e) {
                 onReceiveCallback.accept("SERVER DOWN");
-                e.printStackTrace();
+//                e.printStackTrace();
             }
         }
     }
