@@ -34,30 +34,27 @@ public abstract class NetworkConnection {
 
     private class ConnectionThread extends Thread {
 
-        private Socket socket;
-        private PrintWriter out;
+        Socket socket;
+        PrintWriter out;
 
         @Override
         public void run() {
             try (Socket socket = new Socket(getIP(), getPort());
-                 BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                 PrintWriter out = new PrintWriter(socket.getOutputStream(), true)) {
+                BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                PrintWriter out = new PrintWriter(socket.getOutputStream(), true)) {
 
                 this.socket = socket;
                 this.out = out;
 
                 socket.setTcpNoDelay(true);
                 while(true) {
-                    String line;
-                    while( (line = in.readLine()) != null) {
-                        onReceiveCallback.accept(line);
-                    }
-                    onReceiveCallback.accept("SERVER CLOSED");
-                    break;
+                    String line = in.readLine();
+                    onReceiveCallback.accept(line);
                 }
+//                System.out.println("End of thread loop");
             } catch (Exception e) {
                 onReceiveCallback.accept("SERVER DOWN");
-//                e.printStackTrace();
+                e.printStackTrace();
             }
         }
     }
