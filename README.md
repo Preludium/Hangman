@@ -1,8 +1,8 @@
 # Hangman
 Project for SK2
-server.cpp - main, up-to-date server
-client.cpp - main, up-to-date client in C++
-src/ - project files for client in Java with GUI
+- server.cpp - main, up-to-date server
+- client.cpp - main, up-to-date client in C++
+- src/ - project files for client in Java with GUI
 
 ## Server
 #### Ready for:
