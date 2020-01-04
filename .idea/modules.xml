@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/HangmanClient.iml" filepath="$PROJECT_DIR$/HangmanClient.iml" />
+      <module fileurl="file://$PROJECT_DIR$/javav2.iml" filepath="$PROJECT_DIR$/javav2.iml" />
     </modules>
   </component>
 </project>
