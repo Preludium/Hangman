@@ -57,9 +57,10 @@ void Client::addPoints(int num) {
 }
 
 void Client::sendMsg(string msg) {
-    int n = write(this->socket, msg.c_str(), sizeof(msg));
+    const void * m = msg.c_str();
+    int n = write(this->socket, m, sizeof(m));
     if (n == -1) {
-        fprintf(stderr, "Writing to %s error : %s", this->nick, strerror(errno));
+        fprintf(stderr, "Writing to %s error : %s", this->nick.c_str(), strerror(errno));
         // exit(EXIT_FAILURE);
     }
 }

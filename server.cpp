@@ -337,7 +337,7 @@ void handleGame() {// countdown blocks msgs received from clients
 
         printf("Starting new game...\n");
         int wordNumber = rand() % database.size();
-        printf("Chosen word: %s\n", database.at(wordNumber));
+        printf("Chosen word: %s\n", database.at(wordNumber).c_str());
 
         clientsMtx.lock();
         clients_size = clients.size(); // uzywam wszystkich bo teraz zaden świerzak nie wpadnie to bezpiecznie, chyba xD
