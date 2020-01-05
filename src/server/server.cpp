@@ -25,12 +25,12 @@
 #define WHT   "\x1B[37m"
 #define RESET "\x1B[0m"
 
-#define ACCEPT "ACCEPT\n"
-#define REFUSE "REFUSE\n"
-#define KICK "KICK\n"
-#define COUNT "COUNT\n"
-#define GAME "GAME\n"
-#define OVER "OVER\n"
+#define ACCEPT "ACCEPT"
+#define REFUSE "REFUSE"
+#define KICK "KICK"
+#define COUNT "COUNT"
+#define GAME "GAME"
+#define OVER "OVER"
 // #define LETTER "LETTER\n"
 
 #define COUNTDOWN_TIME 5
@@ -42,7 +42,7 @@ using namespace std;
 const int one = 1;
 
 int serverSocket;
-bool isCountdown = false;
+// bool isCountdown = false;
 vector<string> database;
 
 // ver1
@@ -124,18 +124,9 @@ void handleNewConnections() {
         newClient.sendMsg(ACCEPT);
 
         countdownMtx.lock();
-        if (isCountdown) {
-            clientsMtx.lock();
-            // playingClients.push_back(clientSock);
-            clients.push_back(newClient);
-            clientsMtx.unlock();
-        } else {
-            clientsMtx.lock();
-            // waitingClients.push_back(clientSock);
-            newClient.setStatus(true);  // set plaing status
-            clients.push_back(newClient);
-            clientsMtx.unlock();
-        }
+        clientsMtx.lock();
+        clients.push_back(newClient);
+        clientsMtx.unlock();
         countdownMtx.unlock();
         
     }
@@ -155,18 +146,19 @@ void waitForClients() {
 }
 
 // notify whether countdown is on or not
-void notifyCountdown(bool value) {
-    countdownMtx.lock();
-    isCountdown = value;
-    countdownMtx.unlock();
-}
+// void notifyCountdown(bool value) {
+//     countdownMtx.lock();
+//     isCountdown = value;
+//     countdownMtx.unlock();
+// }
 
 // swap clients between waiting room and game room
 void swapClients() {
     clientsMtx.lock();
     // swap(waitingClients, playingClients);
-    for(auto client : clients) {
-        client.moveToPlaying();
+    for(auto &client : clients) {
+        client.swap();
+        printf("%d\n", client.getStatus());
     }
 
     clientsMtx.unlock();
@@ -256,6 +248,14 @@ void notifyGameOver() {
     }
 }
 
+int countWaitingClients() {
+    int c=0;
+    for (auto client: clients)
+        if (!client.getStatus())
+            ++c;
+    return c;
+}
+
 void handleGame() {// countdown blocks msgs received from clients
     while (true) {
         waitForClients();
@@ -264,16 +264,23 @@ void handleGame() {// countdown blocks msgs received from clients
         // clients should send back "ACCEPT" to confirms that they are ready to play then start countdown
         //
 
-        notifyCountdown(true);
+        //notifyCountdown(true);
         swapClients();
     
         clientsMtx.lock();
-        int clients_size = clients.size();  // uzywam wszystkich bo zakladam ze nie mozna zaczac nowej gierki kiedy jakas juz trwa
+        int iter = 0, clients_size = countWaitingClients();
         pollfd *ppoll = new pollfd[clients_size]{};
-        for (int i=0; i<clients_size; ++i) {
-            ppoll[i].fd = clients.at(i).getSocket();
-            ppoll[i].events = POLLIN;
+        for (auto client: clients) { // poll only waiting clients
+            if (!client.getStatus()) {
+                ppoll[iter].fd = client.getSocket();
+                ppoll[iter].events = POLLIN;
+                ++iter;
+            }
         }
+        // for (int i=0; i<clients_size; ++i) {
+        //     ppoll[i].fd = clients.at(i).getSocket();
+        //     ppoll[i].events = POLLIN;
+        // }
         clientsMtx.unlock();
 
         char message[MAX_LEN];
@@ -306,7 +313,7 @@ void handleGame() {// countdown blocks msgs received from clients
                             ppoll[i] = {};
                             //
                         } else {
-                            printf("Poll on socket %d: %.*s", ppoll[i].fd, len, message);
+                            printf("Poll on socket %d: %.*s\n", ppoll[i].fd, len, message);
                             if (strncmp(message, ACCEPT, sizeof(ACCEPT)) == 0) {
                                 clientsMtx.lock();
                                 //
@@ -331,7 +338,7 @@ void handleGame() {// countdown blocks msgs received from clients
 
         delete[] ppoll;
         
-        notifyCountdown(false);
+        //notifyCountdown(false);
         if (!kickInactiveClients())
             continue;
 

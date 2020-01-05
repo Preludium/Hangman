@@ -35,6 +35,7 @@ public:
     void sendMsg(string msg);
     void moveToPlaying();
     void moveToWaiting();
+    void swap();
 
     bool operator== (Client &rhs);
 

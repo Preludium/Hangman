@@ -73,6 +73,10 @@ void Client::moveToWaiting() {
     this->status = false;
 }
 
+void Client::swap() {
+    this->status = !this->status;
+}
+
 // zmienic na porownanie nicku i socketa
 bool Client::operator== (Client &rhs) {
     if (this->socket == rhs.getSocket() && this->status == rhs.getStatus()) 
