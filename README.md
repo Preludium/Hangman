@@ -1,16 +1,18 @@
 # Hangman
 Project for SK2
-- server.cpp - main, up-to-date server
-- client.cpp - main, up-to-date client in C++
-- src/ - project files for client in Java with GUI
+- src/server - server files in C++
+- src/client - client files in Java with GUI
 
 ## Server
 #### Ready for:
 - clients accepting
 - clients polling during countdown
+- clients polling during game (partial)
 #### TODO:
-- game handling
-- clients polling during game
+- NICK setting
+- GOOD guesses
+- leaderboard sending
+- code cleanups
 - bugs
 
 ## Client
@@ -21,4 +23,3 @@ Project for SK2
 - GUI support
 #### TODO:
 - bugs
-- merge java implementation
