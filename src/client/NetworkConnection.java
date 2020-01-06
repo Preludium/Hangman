@@ -49,6 +49,8 @@ public abstract class NetworkConnection {
                 while(true) {
 //                    if (!socket.getInetAddress().isReachable(5))
 //                        onReceiveCallback.accept("SERVER CLOSED");
+                    if (socket.isClosed())
+                        break;
 
                     String line = in.readLine();
                     onReceiveCallback.accept(line);
