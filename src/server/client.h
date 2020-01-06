@@ -6,6 +6,7 @@
 #include <iostream>
 #include <cstdio>
 #include <string.h>
+#include "commands.h"
 
 #define MAX_FAILS 10
 using namespace std;
@@ -42,6 +43,7 @@ public:
     void moveToWaiting();
     void swap();
     int noteFail();
+    void notifyGood(char letter, vector<int> positions);
 
     bool operator== (Client &rhs);
 

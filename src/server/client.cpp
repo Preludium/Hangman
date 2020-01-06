@@ -93,6 +93,15 @@ int Client::noteFail() {
     return --this->remaining;
 }
 
+void Client::notifyGood(char letter, vector<int> positions) {
+    string output = GOOD;
+    output += "_" + letter;
+    for (auto pos : positions)
+        output += "_" + to_string(pos);
+    this->sendMsg(output);
+    printf("%s\n", output.c_str());
+}
+
 // zmienic na porownanie nicku i socketa
 bool Client::operator== (Client &rhs) {
     if (this->socket == rhs.getSocket() && this->status == rhs.getStatus()) 

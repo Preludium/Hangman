@@ -183,6 +183,21 @@ void notifyGameOver() {
     clientsMtx.unlock();
 }
 
+// OK
+// find all indices of a given letter in word from db
+vector<int> findPositions(int wordNumber, char letter) {
+    int num = 0;
+    vector<int> output;
+    for (char &c : database.at(wordNumber)) {
+        if (c == letter)
+            output.push_back(num);
+        ++num;
+    }
+    return output;
+}
+
+// OK
+// whole countdown handling 
 void handleCountdownProcedure() {
     char s[MAX_LEN];
     clientsMtx.lock();
@@ -257,6 +272,8 @@ void handleCountdownProcedure() {
     delete[] ppoll;
 }
 
+// TODO
+// whole one game handling
 void handleGameProcedure() {
     printf("Starting new game...\n");
     int wordNumber = rand() % database.size();
@@ -314,9 +331,9 @@ void handleGameProcedure() {
                         clientsMtx.unlock();
 
                         if (database.at(wordNumber).find(message[0]) != string::npos) {
-                            // TODO: find exact positions
-                            // TODO: update score
-                            // TODO: send message to client: GOOD <positions delimited with whitespace>
+                            vector<int> positions = findPositions(wordNumber, message[0]);
+                            pos->addPoints(positions.size());
+                            pos->notifyGood(message[0], positions);
 
                         } else {
                             int remaining = pos->noteFail();
@@ -375,8 +392,8 @@ bool kickInactiveClients() {
     return true;
 }
 
-/// NEEDS CHECK
-// handles whole game procedure
+/// OK
+// handles whole game thread
 void handleGame() {
     while (true) {
         waitForClients(); // wait for at least 2 clients
