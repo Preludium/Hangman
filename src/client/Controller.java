@@ -10,6 +10,7 @@ import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.text.TextAlignment;
 
 import java.net.URL;
 import java.util.ResourceBundle;
@@ -24,7 +25,7 @@ public class Controller implements Initializable {
     @FXML
     public Button sendBtn;
     @FXML
-    private Button readyBtn;
+    public Button readyBtn;
     @FXML
     public TextField inputEdit;
     @FXML
@@ -32,6 +33,8 @@ public class Controller implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
+        msgLbl.setWrapText(true);
+        msgLbl.setTextAlignment(TextAlignment.CENTER);
         sendBtn.setDisable(true);
         // cant display image...
 //        imageView = new ImageView(new Image(getClass().getResourceAsStream("/resources/image/start_img.jpg")));
@@ -54,11 +57,29 @@ public class Controller implements Initializable {
         this.inputEdit.clear();
     }
 
+    public String getPhraseLbl() {
+        return phraseLbl.getText();
+    }
+
+    public void setPhraseLbl(String phraseLbl) {
+        this.phraseLbl.setText(phraseLbl);
+    }
+
+    public void setImageView(ImageView imageView) {
+        this.imageView = imageView;
+    }
+
     public void setMessageText(String msg) {
         this.msgLbl.setText(msg);
     }
 
     public void setScoreBoard(String scoreBoard) {
         this.scoreBoard.setText(scoreBoard);
+    }
+
+    public void disableAll() {
+        sendBtn.setDisable(true);
+        readyBtn.setDisable(true);
+        inputEdit.setDisable(true);
     }
 }
