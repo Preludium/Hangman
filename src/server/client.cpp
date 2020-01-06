@@ -69,7 +69,8 @@ void Client::addPoints(int num) {
 //  (for now: server dies after sending message to disconnected client)
 void Client::sendMsg(string msg) {
     msg += "\n";
-    const void * m = msg.c_str();
+    char m[msg.size()+1];
+    strcpy(m, msg.c_str());
     int n = write(this->socket, m, sizeof(m));
     if (n == -1) {
         fprintf(stderr, "Writing to %s error : %s", this->nick.c_str(), strerror(errno));
@@ -95,9 +96,12 @@ int Client::noteFail() {
 
 void Client::notifyGood(char letter, vector<int> positions) {
     string output = GOOD;
-    output += "_" + letter;
-    for (auto pos : positions)
-        output += "_" + to_string(pos);
+    output += "_";
+    output += letter;
+    for (auto pos : positions) {
+        output += "_";
+        output += to_string(pos);
+    }
     this->sendMsg(output);
     printf("%s\n", output.c_str());
 }
