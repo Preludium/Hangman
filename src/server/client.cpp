@@ -9,6 +9,7 @@ Client::Client(int socket) {//, string nick) {
     // this.nick = nick;    
     this->status = false;
     this->points = 0;
+    this->remaining = MAX_FAILS;
     // this.letters;
 }
 
@@ -44,6 +45,14 @@ int Client::getPoints() {
     return this->points;
 }
 
+void Client::setRemaining(int remaining) {
+    this->remaining = remaining;
+}
+
+int Client::getRemaining() {
+    return this->remaining;
+}
+
 void Client::setLetters(vector<bool> letters) {
     this->letters = letters;
 }
@@ -56,7 +65,10 @@ void Client::addPoints(int num) {
     this->points += num;
 }
 
+// TODO: needs checking of write error handling 
+//  (for now: server dies after sending message to disconnected client)
 void Client::sendMsg(string msg) {
+    msg += "\n";
     const void * m = msg.c_str();
     int n = write(this->socket, m, sizeof(m));
     if (n == -1) {
@@ -75,6 +87,10 @@ void Client::moveToWaiting() {
 
 void Client::swap() {
     this->status = !this->status;
+}
+
+int Client::noteFail() {
+    return --this->remaining;
 }
 
 // zmienic na porownanie nicku i socketa

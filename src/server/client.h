@@ -6,6 +6,8 @@
 #include <iostream>
 #include <cstdio>
 #include <string.h>
+
+#define MAX_FAILS 10
 using namespace std;
 
 class Client {
@@ -13,6 +15,7 @@ class Client {
     bool status; // false - waiting, true - playing
     string nick;
     int points;
+    int remaining;
     // bool letters[]; cpp nie zwraca list xD
     vector<bool> letters;
 
@@ -28,6 +31,8 @@ public:
     string getNick();
     void setPoints(int num);
     int getPoints();
+    void setRemaining(int remaining);
+    int getRemaining();
     void setLetters(vector<bool> letters);
     vector<bool> getLetters(); 
 
@@ -36,6 +41,7 @@ public:
     void moveToPlaying();
     void moveToWaiting();
     void swap();
+    int noteFail();
 
     bool operator== (Client &rhs);
 
