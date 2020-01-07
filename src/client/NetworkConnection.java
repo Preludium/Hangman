@@ -14,6 +14,10 @@ public abstract class NetworkConnection {
         this.connThread.setDaemon(true);
     }
 
+    public Socket getSocket() {
+        return connThread.socket;
+    }
+
     public void startConnection() {
         connThread.start();
     }
@@ -33,8 +37,8 @@ public abstract class NetworkConnection {
 
     private class ConnectionThread extends Thread {
 
-        Socket socket;
-        PrintWriter out;
+        private Socket socket;
+        private PrintWriter out;
 
         @Override
         public void run() {
@@ -47,17 +51,18 @@ public abstract class NetworkConnection {
 
                 socket.setTcpNoDelay(true);
                 while(true) {
-//                    if (!socket.getInetAddress().isReachable(5))
-//                        onReceiveCallback.accept("SERVER CLOSED");
-                    if (socket.isClosed())
-                        break;
-
                     String line = in.readLine();
+                    if (line == null) {
+                        onReceiveCallback.accept("SERVER CLOSED");
+                        break;
+                    }
+
+//                    System.out.println(line);
                     onReceiveCallback.accept(line);
                 }
             } catch (Exception e) {
-                onReceiveCallback.accept("SERVER DOWN");
-//                e.printStackTrace();
+                if(socket == null)
+                    onReceiveCallback.accept("SERVER DOWN");
             }
         }
     }
