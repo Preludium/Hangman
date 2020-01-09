@@ -9,8 +9,6 @@ Project for SK2
 - clients polling during countdown
 - clients polling during game (partial)
 #### TODO:
-- NICK setting
-- GOOD guesses
 - leaderboard sending
 - code cleanups
 - bugs

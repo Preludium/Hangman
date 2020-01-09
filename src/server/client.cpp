@@ -96,10 +96,10 @@ int Client::noteFail() {
 
 void Client::notifyGood(char letter, vector<int> positions) {
     string output = GOOD;
-    output += "_";
+    output += " ";
     output += letter;
     for (auto pos : positions) {
-        output += "_";
+        output += " ";
         output += to_string(pos);
     }
     this->sendMsg(output);

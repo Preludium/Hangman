@@ -202,13 +202,14 @@ void notifyNewGame(int len) {
     clientsMtx.unlock();
 }
 
-/// OK
+/// TODO
 // inform clients about game over
 void notifyGameOver() {
     clientsMtx.lock();
     for (auto client : clients) {
         if (client.getStatus())
-            client.sendMsg(OVER);
+            client.sendMsg(OVER); // TODO: OVER <number of players>
+        // TODO: send leaderboard to each client
     }
     clientsMtx.unlock();
 }

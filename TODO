@@ -1,0 +1,12 @@
+SERVER:
+    1. OVER <number of players>
+    2. Leaderboard sending
+    3. When client tries the same letter twice or more, the server notes fail and sends BAD each time
+* technical:
+    - Check all mutex occurences and decide, whether somewhere is/isn't necessary
+    - Split code into more functions
+
+CLIENT:
+    1. Client button 'Ready' not working on countdown
+* technical:
+    - Check all occurences of splitted strings

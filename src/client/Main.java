@@ -17,6 +17,8 @@ import javafx.scene.input.KeyEvent;
 import javafx.stage.Stage;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class Main extends Application {
@@ -77,6 +79,7 @@ public class Main extends Application {
 //        your update in a queue and it will be handled by the GUI thread as soon as possible.
             Platform.runLater(() -> {
                 if (data != null) {
+                    String[] splt = data.split(" ");
                     if (data.equals("SERVER DOWN")) {
                         controller.setMessageText("Server is down. Reconnect or come back later...");
                         controller.disableAll();
@@ -87,14 +90,14 @@ public class Main extends Application {
                         controller.disableAll();
                         handleCloseConn();
                         reconnect();
-                    } else if (data.contains(ACCEPT)) {
+                    } else if (splt[0].contains(ACCEPT)) {
                         controller.setMessageText("Connected. Waiting for a new game session");
-                    } else if (data.contains(REFUSE)) {
+                    } else if (splt[0].contains(REFUSE)) {
                         controller.setMessageText("This nick is taken. Reconnect to choose new one");
                         controller.disableAll();
                         handleCloseConn();
                         reconnect();
-                    } else if (data.contains(KICK)) {
+                    } else if (splt[0].contains(KICK)) {
                         controller.setMessageText("You have been kicked from the server");
                         controller.getPhraseLbl().setText("");
                         controller.getImageView().setImage(null);
@@ -102,9 +105,9 @@ public class Main extends Application {
                         controller.disableAll();
                         handleCloseConn();
                         reconnect();
-                    } else if (data.contains(GAME)) {
+                    } else if (splt[0].contains(GAME)) {
                         controller.setMessageText("Starting game");
-                        int num = Integer.parseInt(data.substring(5));
+                        int num = Integer.parseInt(splt[1]);
                         phrase = "*".repeat(num);
                         controller.setPhraseLblText(phrase);
                         controller.setMessageText("Choose letter");
@@ -113,38 +116,38 @@ public class Main extends Application {
                         controller.getSendBtn().setDisable(false);
                         controller.getInputEdit().setDisable(false);
                         controller.getScoreBoard().setText("");
-                    } else if (data.contains(COUNT)) {
-                        String time = data.substring(6);
+                    } else if (splt[0].contains(COUNT)) {
+                        String time = splt[1];
                         controller.setMessageText("Game will start in " + time + " s");
-                    } else if (data.contains(OVER)) {
+                    } else if (splt[0].contains(OVER)) {
                         controller.setMessageText("Game ended");
-                        players = Integer.parseInt(data.substring(5));
+                        players = Integer.parseInt(splt[1]);
                         scoreBoard = new ArrayList<>();
                         controller.disableAll();
-                    } else if (data.contains(PLAYER)) {
-                        scoreBoard.add(data.substring(7));
+                    } else if (splt[0].contains(PLAYER)) {
+                        scoreBoard.add(splt[1]);
                         if (scoreBoard.size() == players) {
                             controller.drawScoreBoard(scoreBoard);
                             players = 0;
                             scoreBoard = null;
                         }
-                    } else if (data.contains(WAIT)) {
+                    } else if (splt[0].contains(WAIT)) {
                         controller.setMessageText("Waiting for min 2 clients to start countdown. Click ready to join");
                         controller.disableAll();
                         controller.getReadyBtn().setDisable(false);
-                    } else if (data.contains(GOOD)) {
+                    } else if (splt[0].contains(GOOD)) {
                         controller.setMessageText("Successful guess");
-                        char letter = data.charAt(5);
-                        String[] positions = data.substring(7).split(" ");
+                        char letter = splt[1].charAt(0);
+                        String[] positions = Arrays.copyOfRange(splt, 2, splt.length);
                         for (var pos : positions) {
                             int x = Integer.parseInt(pos);
                             phrase = phrase.substring(0, x) + letter + phrase.substring(x + 1);
                         }
                         controller.setPhraseLblText(phrase);
-                    } else if (data.contains(BAD)) {
-                        int fails = Integer.parseInt(data.substring(4));
+                    } else if (splt[0].contains(BAD)) {
+                        int fails = Integer.parseInt(splt[1]);
                         if (fails > 0) {
-                            controller.setMessageText("Fail, " + data.substring(4) + " chances left");
+                            controller.setMessageText("Fail, " + splt[1]+ " chances left");
                             controller.drawImage(fails);
                         } else {
                             controller.setMessageText("Game over. Waiting for scoreboard");
