@@ -88,7 +88,7 @@ public class Main extends Application {
                         handleCloseConn();
                         reconnect();
                     } else if (data.contains(ACCEPT)) {
-                        controller.setMessageText("Connected to server");
+                        controller.setMessageText("Connected. Waiting for a new game session");
                     } else if (data.contains(REFUSE)) {
                         controller.setMessageText("This nick is taken. Reconnect to choose new one");
                         controller.disableAll();
@@ -143,8 +143,14 @@ public class Main extends Application {
                         controller.setPhraseLblText(phrase);
                     } else if (data.contains(BAD)) {
                         int fails = Integer.parseInt(data.substring(4));
-                        controller.setMessageText("Fail, " + data.substring(4) + " chances left");
-                        controller.drawImage(fails);
+                        if (fails > 0) {
+                            controller.setMessageText("Fail, " + data.substring(4) + " chances left");
+                            controller.drawImage(fails);
+                        } else {
+                            controller.setMessageText("Game over. Waiting for scoreboard");
+                            controller.getInputEdit().setDisable(true);
+                            controller.getSendBtn().setDisable(true);
+                        }
                     }
                 }
             });
