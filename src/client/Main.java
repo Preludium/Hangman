@@ -56,60 +56,73 @@ public class Main extends Application {
         connection.send("NICK " + nick);
     }
 
+    public void reconnect() {
+        controller.getReadyBtn().setDisable(false);
+        controller.getReadyBtn().setText("Reconnect");
+        controller.getReadyBtn().setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent actionEvent) {
+                controller.getInputEdit().setDisable(false);
+                controller.getSendBtn().setDisable(false);
+                setUp();
+                controller.getReadyBtn().setDisable(true);
+                controller.getReadyBtn().setText("Ready");
+            }
+        });
+    }
+
     public void setUp() {
         connection = new Client("127.0.0.1", 8080, data -> {
 //        Platform.runLater: If you need to update a GUI component from a non-GUI thread, you can use that to put
 //        your update in a queue and it will be handled by the GUI thread as soon as possible.
             Platform.runLater(() -> {
                 if (data != null) {
-//                controller.setScoreBoard(data);
                     if (data.equals("SERVER DOWN")) {
-                        controller.setMessageText("Server is down. Come back later...");
+                        controller.setMessageText("Server is down. Reconnect or come back later...");
                         controller.disableAll();
+                        reconnect();
                     } else if (data.equals("SERVER CLOSED")) {
                         controller.setMessageText("Server closed connection");
+                        controller.clearInputEdit();
                         controller.disableAll();
                         handleCloseConn();
+                        reconnect();
                     } else if (data.contains(ACCEPT)) {
                         controller.setMessageText("Connected to server");
                     } else if (data.contains(REFUSE)) {
-                        controller.setMessageText("This nick is taken. Restart application to choose another one");
+                        controller.setMessageText("This nick is taken. Reconnect to choose new one");
                         controller.disableAll();
                         handleCloseConn();
-                        controller.readyBtn.setDisable(false);
-                        controller.readyBtn.setText("Reconnect");
-                        controller.readyBtn.setOnAction(new EventHandler<ActionEvent>() {
-                            @Override
-                            public void handle(ActionEvent actionEvent) {
-                                controller.inputEdit.setDisable(false);
-                                controller.sendBtn.setDisable(false);
-                                setUp();
-                                controller.readyBtn.setDisable(true);
-                            }
-                        });
+                        reconnect();
                     } else if (data.contains(KICK)) {
-                        controller.setMessageText("You have been kicked from the server. Restart application to reconnect");
+                        controller.setMessageText("You have been kicked from the server");
+                        controller.getPhraseLbl().setText("");
+                        controller.getImageView().setImage(null);
+                        controller.getScoreBoard().setText("");
                         controller.disableAll();
                         handleCloseConn();
+                        reconnect();
                     } else if (data.contains(GAME)) {
                         controller.setMessageText("Starting game");
                         int num = Integer.parseInt(data.substring(5));
                         phrase = "*".repeat(num);
-                        controller.setPhraseLbl(phrase);
+                        controller.setPhraseLblText(phrase);
                         controller.setMessageText("Choose letter");
-                        controller.setScoreBoard("");
+                        controller.setScoreBoardText("");
+                        controller.getImageView().setImage(null);
+                        controller.getSendBtn().setDisable(false);
+                        controller.getInputEdit().setDisable(false);
+                        controller.getScoreBoard().setText("");
                     } else if (data.contains(COUNT)) {
                         String time = data.substring(6);
                         controller.setMessageText("Game will start in " + time + " s");
                     } else if (data.contains(OVER)) {
                         controller.setMessageText("Game ended");
                         players = Integer.parseInt(data.substring(5));
-//                    System.out.println(players);
                         scoreBoard = new ArrayList<>();
                         controller.disableAll();
                     } else if (data.contains(PLAYER)) {
                         scoreBoard.add(data.substring(7));
-//                    System.out.println(data.substring(7));
                         if (scoreBoard.size() == players) {
                             controller.drawScoreBoard(scoreBoard);
                             players = 0;
@@ -118,7 +131,7 @@ public class Main extends Application {
                     } else if (data.contains(WAIT)) {
                         controller.setMessageText("Waiting for min 2 clients to start countdown. Click ready to join");
                         controller.disableAll();
-                        controller.readyBtn.setDisable(false);
+                        controller.getReadyBtn().setDisable(false);
                     } else if (data.contains(GOOD)) {
                         controller.setMessageText("Successful guess");
                         char letter = data.charAt(5);
@@ -127,7 +140,7 @@ public class Main extends Application {
                             int x = Integer.parseInt(pos);
                             phrase = phrase.substring(0, x) + letter + phrase.substring(x + 1);
                         }
-                        controller.setPhraseLbl(phrase);
+                        controller.setPhraseLblText(phrase);
                     } else if (data.contains(BAD)) {
                         int fails = Integer.parseInt(data.substring(4));
                         controller.setMessageText("Fail, " + data.substring(4) + " chances left");
@@ -137,29 +150,39 @@ public class Main extends Application {
             });
         });
         controller.setMessageText("Type your nick");
-        controller.sendBtn.setText("Confirm");
-
-        controller.sendBtn.setOnAction(new EventHandler<ActionEvent>() {
+        controller.getSendBtn().setText("Confirm");
+        controller.getSendBtn().setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent actionEvent) {
-                nick = controller.getInputEdit();
+                nick = controller.getInputEditText();
                 controller.clearInputEdit();
+                controller.setMessageText("Connecting to server...");
                 setUpAfterNick();
             }
         });
 
-        controller.inputEdit.setOnKeyPressed(new EventHandler<KeyEvent>() {
+        controller.getInputEdit().setOnKeyPressed(new EventHandler<KeyEvent>() {
             @Override
             public void handle(KeyEvent ke) {
                 if (ke.getCode().equals(KeyCode.ENTER)) {
-                    if (!controller.getInputEdit().isEmpty()) {
-                        nick = controller.getInputEdit();
+                    if (!controller.getInputEditText().isEmpty()) {
+                        nick = controller.getInputEditText();
                         controller.clearInputEdit();
+                        controller.setMessageText("Connecting to server...");
                         setUpAfterNick();
                     }
                 }
             }
         });
+
+        controller.getInputEdit().setTextFormatter(new TextFormatter<String>((TextFormatter.Change change) -> {
+            String newText = change.getControlNewText();
+            if (newText.length() > 15) {
+                return null ;
+            } else {
+                return change ;
+            }
+        }));
     }
 
     public void setUpAfterNick() {
@@ -173,41 +196,42 @@ public class Main extends Application {
         if(connection.getSocket() != null)
             sendNick();
 
-        controller.setMessageText("");
-        controller.sendBtn.setText("Send");
+        controller.getSendBtn().setText("Send");
+        controller.getInputEdit().setDisable(true);
 
-        controller.sendBtn.setOnAction(new EventHandler<ActionEvent>() {
+        controller.getSendBtn().setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent actionEvent) {
-                connection.send(controller.getInputEdit().toLowerCase());
+                connection.send(controller.getInputEditText().toLowerCase());
                 controller.clearInputEdit();
             }
         });
 
-        controller.readyBtn.setOnAction(new EventHandler<ActionEvent>() {
+        controller.getReadyBtn().setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent actionEvent) {
                 connection.send(READY);
-                controller.readyBtn.setDisable(true);
+                controller.getReadyBtn().setDisable(true);
+                controller.getMsgLbl().setText("Waiting for min 2 clients to start countdown. You are ready");
             }
         });
 
-        controller.inputEdit.setOnKeyPressed(new EventHandler<KeyEvent>()
+        controller.getInputEdit().setOnKeyPressed(new EventHandler<KeyEvent>()
         {
             @Override
             public void handle(KeyEvent ke)
             {
                 if (ke.getCode().equals(KeyCode.ENTER))
                 {
-                    if(!controller.getInputEdit().isEmpty()) {
-                        connection.send(controller.getInputEdit().toLowerCase());
+                    if(!controller.getInputEditText().isEmpty()) {
+                        connection.send(controller.getInputEditText().toLowerCase());
                         controller.clearInputEdit();
                     }
                 }
             }
         });
 
-        controller.inputEdit.setTextFormatter(new TextFormatter<String>((TextFormatter.Change change) -> {
+        controller.getInputEdit().setTextFormatter(new TextFormatter<String>((TextFormatter.Change change) -> {
             String newText = change.getControlNewText();
             if (newText.length() > 1) {
                 return null ;

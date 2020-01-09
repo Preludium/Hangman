@@ -26,11 +26,11 @@ public class Controller implements Initializable {
     @FXML
     private Label msgLbl;
     @FXML
-    public Button sendBtn;
+    private Button sendBtn;
     @FXML
-    public Button readyBtn;
+    private Button readyBtn;
     @FXML
-    public TextField inputEdit;
+    private TextField inputEdit;
     @FXML
     private TextArea scoreBoard;
 
@@ -51,7 +51,7 @@ public class Controller implements Initializable {
         });
     }
 
-    public String getInputEdit() {
+    public String getInputEditText() {
         return inputEdit.getText();
     }
 
@@ -59,11 +59,11 @@ public class Controller implements Initializable {
         this.inputEdit.clear();
     }
 
-    public String getPhraseLbl() {
+    public String getPhraseLblText() {
         return phraseLbl.getText();
     }
 
-    public void setPhraseLbl(String phraseLbl) {
+    public void setPhraseLblText(String phraseLbl) {
         this.phraseLbl.setText(phraseLbl);
     }
 
@@ -75,8 +75,60 @@ public class Controller implements Initializable {
         this.msgLbl.setText(msg);
     }
 
-    public void setScoreBoard(String scoreBoard) {
+    public void setScoreBoardText(String scoreBoard) {
         this.scoreBoard.setText(scoreBoard);
+    }
+
+    public Label getPhraseLbl() {
+        return phraseLbl;
+    }
+
+    public void setPhraseLbl(Label phraseLbl) {
+        this.phraseLbl = phraseLbl;
+    }
+
+    public ImageView getImageView() {
+        return imageView;
+    }
+
+    public Label getMsgLbl() {
+        return msgLbl;
+    }
+
+    public void setMsgLbl(Label msgLbl) {
+        this.msgLbl = msgLbl;
+    }
+
+    public Button getSendBtn() {
+        return sendBtn;
+    }
+
+    public void setSendBtn(Button sendBtn) {
+        this.sendBtn = sendBtn;
+    }
+
+    public Button getReadyBtn() {
+        return readyBtn;
+    }
+
+    public void setReadyBtn(Button readyBtn) {
+        this.readyBtn = readyBtn;
+    }
+
+    public TextField getInputEdit() {
+        return inputEdit;
+    }
+
+    public void setInputEdit(TextField inputEdit) {
+        this.inputEdit = inputEdit;
+    }
+
+    public TextArea getScoreBoard() {
+        return scoreBoard;
+    }
+
+    public void setScoreBoard(TextArea scoreBoard) {
+        this.scoreBoard = scoreBoard;
     }
 
     public void disableAll() {
