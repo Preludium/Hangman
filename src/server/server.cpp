@@ -93,6 +93,7 @@ bool readDatabase(string filename) {
     return false;
 }
 
+// check if given nick is available
 bool checkNick(string nick) {
 
     for(auto client : clients) {

@@ -38,74 +38,7 @@ public class Main extends Application {
     private int players;
 
     private Controller controller;
-    private NetworkConnection connection = new Client("127.0.0.1", 8080, data -> {
-//        Platform.runLater: If you need to update a GUI component from a non-GUI thread, you can use that to put
-//        your update in a queue and it will be handled by the GUI thread as soon as possible.
-        Platform.runLater(() -> {
-            if (data != null) {
-//                controller.setScoreBoard(data);
-                if (data.equals("SERVER DOWN")) {
-                    controller.setMessageText("Server is down. Come back later...");
-                    controller.disableAll();
-                } else if (data.equals("SERVER CLOSED")) {
-                    controller.setMessageText("Server closed connection");
-                    controller.disableAll();
-                    handleCloseConn();
-                } else if (data.contains(ACCEPT)) {
-                    controller.setMessageText("Connected to server");
-                } else if (data.contains(REFUSE)) {
-                    controller.setMessageText("This nick is taken. Restart application to choose another one");
-                    controller.disableAll();
-                    handleCloseConn();
-                } else if (data.contains(KICK)) {
-                    controller.setMessageText("You have been kicked from the server. Restart application to reconnect");
-                    controller.disableAll();
-                    handleCloseConn();
-                } else if (data.contains(GAME)) {
-                    controller.setMessageText("Starting game");
-                    int num = Integer.parseInt(data.substring(5));
-                    phrase = "*".repeat(num);
-                    controller.setPhraseLbl(phrase);
-                    controller.setMessageText("Choose letter");
-                    controller.setScoreBoard("");
-                } else if (data.contains(COUNT)) {
-                    String time = data.substring(6);
-                    controller.setMessageText("Game will start in " + time + " s");
-                } else if (data.contains(OVER)) {
-                    controller.setMessageText("Game ended");
-                    players = Integer.parseInt(data.substring(5));
-//                    System.out.println(players);
-                    scoreBoard = new ArrayList<>();
-                    controller.disableAll();
-                } else if (data.contains(PLAYER)) {
-                    scoreBoard.add(data.substring(7));
-//                    System.out.println(data.substring(7));
-                    if (scoreBoard.size() == players) {
-                        controller.drawScoreBoard(scoreBoard);
-                        players = 0;
-                        scoreBoard = null;
-                    }
-                } else if (data.contains(WAIT)) {
-                    controller.setMessageText("Waiting for min 2 clients to start countdown. Click ready to join");
-                    controller.disableAll();
-                    controller.readyBtn.setDisable(false);
-                } else if (data.contains(GOOD)) {
-                    controller.setMessageText("Successful guess");
-                    char letter = data.charAt(5);
-                    String[] positions = data.substring(7).split(" ");
-                    for (var pos : positions) {
-                        int x = Integer.parseInt(pos);
-                        phrase = phrase.substring(0, x) + letter + phrase.substring(x + 1);
-                    }
-                    controller.setPhraseLbl(phrase);
-                } else if (data.contains(BAD)) {
-                    int fails = Integer.parseInt(data.substring(4));
-                    controller.setMessageText("Fail, " + data.substring(4) + " chances left");
-                    controller.drawImage(fails);
-                }
-            }
-        });
-    });
+    private NetworkConnection connection;
 
     @Override
     public void start(Stage primaryStage) throws Exception{
@@ -120,10 +53,89 @@ public class Main extends Application {
     }
 
     public void sendNick(){
-        connection.send("NICK " + nick + "\n");
+        connection.send("NICK " + nick);
     }
 
     public void setUp() {
+        connection = new Client("127.0.0.1", 8080, data -> {
+//        Platform.runLater: If you need to update a GUI component from a non-GUI thread, you can use that to put
+//        your update in a queue and it will be handled by the GUI thread as soon as possible.
+            Platform.runLater(() -> {
+                if (data != null) {
+//                controller.setScoreBoard(data);
+                    if (data.equals("SERVER DOWN")) {
+                        controller.setMessageText("Server is down. Come back later...");
+                        controller.disableAll();
+                    } else if (data.equals("SERVER CLOSED")) {
+                        controller.setMessageText("Server closed connection");
+                        controller.disableAll();
+                        handleCloseConn();
+                    } else if (data.contains(ACCEPT)) {
+                        controller.setMessageText("Connected to server");
+                    } else if (data.contains(REFUSE)) {
+                        controller.setMessageText("This nick is taken. Restart application to choose another one");
+                        controller.disableAll();
+                        handleCloseConn();
+                        controller.readyBtn.setDisable(false);
+                        controller.readyBtn.setText("Reconnect");
+                        controller.readyBtn.setOnAction(new EventHandler<ActionEvent>() {
+                            @Override
+                            public void handle(ActionEvent actionEvent) {
+                                controller.inputEdit.setDisable(false);
+                                controller.sendBtn.setDisable(false);
+                                setUp();
+                                controller.readyBtn.setDisable(true);
+                            }
+                        });
+                    } else if (data.contains(KICK)) {
+                        controller.setMessageText("You have been kicked from the server. Restart application to reconnect");
+                        controller.disableAll();
+                        handleCloseConn();
+                    } else if (data.contains(GAME)) {
+                        controller.setMessageText("Starting game");
+                        int num = Integer.parseInt(data.substring(5));
+                        phrase = "*".repeat(num);
+                        controller.setPhraseLbl(phrase);
+                        controller.setMessageText("Choose letter");
+                        controller.setScoreBoard("");
+                    } else if (data.contains(COUNT)) {
+                        String time = data.substring(6);
+                        controller.setMessageText("Game will start in " + time + " s");
+                    } else if (data.contains(OVER)) {
+                        controller.setMessageText("Game ended");
+                        players = Integer.parseInt(data.substring(5));
+//                    System.out.println(players);
+                        scoreBoard = new ArrayList<>();
+                        controller.disableAll();
+                    } else if (data.contains(PLAYER)) {
+                        scoreBoard.add(data.substring(7));
+//                    System.out.println(data.substring(7));
+                        if (scoreBoard.size() == players) {
+                            controller.drawScoreBoard(scoreBoard);
+                            players = 0;
+                            scoreBoard = null;
+                        }
+                    } else if (data.contains(WAIT)) {
+                        controller.setMessageText("Waiting for min 2 clients to start countdown. Click ready to join");
+                        controller.disableAll();
+                        controller.readyBtn.setDisable(false);
+                    } else if (data.contains(GOOD)) {
+                        controller.setMessageText("Successful guess");
+                        char letter = data.charAt(5);
+                        String[] positions = data.substring(7).split(" ");
+                        for (var pos : positions) {
+                            int x = Integer.parseInt(pos);
+                            phrase = phrase.substring(0, x) + letter + phrase.substring(x + 1);
+                        }
+                        controller.setPhraseLbl(phrase);
+                    } else if (data.contains(BAD)) {
+                        int fails = Integer.parseInt(data.substring(4));
+                        controller.setMessageText("Fail, " + data.substring(4) + " chances left");
+                        controller.drawImage(fails);
+                    }
+                }
+            });
+        });
         controller.setMessageText("Type your nick");
         controller.sendBtn.setText("Confirm");
 
