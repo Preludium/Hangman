@@ -4,9 +4,9 @@ Client::Client() {
 
 }
 
-Client::Client(int socket) {//, string nick) {
+Client::Client(int socket, string nick) {
     this->socket = socket;
-    // this.nick = nick;    
+    this->nick = nick;    
     this->status = false;
     this->points = 0;
     this->remaining = MAX_FAILS;

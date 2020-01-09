@@ -120,7 +120,7 @@ public class Main extends Application {
     }
 
     public void sendNick(){
-        connection.send("NICK " + nick);
+        connection.send("NICK " + nick + "\n");
     }
 
     public void setUp() {
@@ -153,7 +153,7 @@ public class Main extends Application {
     public void setUpAfterNick() {
         connection.startConnection();
         try {
-            TimeUnit.SECONDS.sleep(1);
+            TimeUnit.MILLISECONDS.sleep(5);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -167,7 +167,7 @@ public class Main extends Application {
         controller.sendBtn.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent actionEvent) {
-                connection.send(controller.getInputEdit());
+                connection.send(controller.getInputEdit().toLowerCase());
                 controller.clearInputEdit();
             }
         });
@@ -188,7 +188,7 @@ public class Main extends Application {
                 if (ke.getCode().equals(KeyCode.ENTER))
                 {
                     if(!controller.getInputEdit().isEmpty()) {
-                        connection.send(controller.getInputEdit());
+                        connection.send(controller.getInputEdit().toLowerCase());
                         controller.clearInputEdit();
                     }
                 }

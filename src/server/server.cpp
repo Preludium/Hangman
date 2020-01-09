@@ -93,6 +93,16 @@ bool readDatabase(string filename) {
     return false;
 }
 
+bool checkNick(string nick) {
+
+    for(auto client : clients) {
+        if (client.getNick().compare(nick) == 0)
+            return false;
+    }
+
+    return true;
+}
+
 /// OK
 // handles each new connection to server
 void handleNewConnections() {
@@ -104,15 +114,34 @@ void handleNewConnections() {
             continue;
         }
 
-        Client newClient(clientSock);
+        char buf[MAX_LEN];
+        int len;
 
-        printf(GRN "New client connected on socket %d\n" RESET, clientSock);
-        newClient.sendMsg(ACCEPT);
+        if((len = read(clientSock, buf, sizeof(buf))) <= 0) {
+            perror(RED "Client socket read error" RESET);
+            continue;
+        }
+        else {
+            string nick(buf, len);
+            if (nick.find("NICK") != string::npos) {
+                nick = nick.substr(5);
+                if (checkNick(nick)) {
+                    Client newClient(clientSock, nick);
 
-        clientsMtx.lock();
-        clients.push_back(newClient);
-        clientsMtx.unlock();
+                    printf(GRN "New client connected on socket %d\n" RESET, clientSock);
+                    newClient.sendMsg(ACCEPT);
 
+                    clientsMtx.lock();
+                    clients.push_back(newClient);
+                    clientsMtx.unlock();
+                }
+                else {
+                    printf(RED "Nick taken, client connection refused\n" RESET);
+                    write(clientSock, REFUSE, sizeof(REFUSE));
+                    close(clientSock);
+                }
+            }
+        }
     }
 }
 

@@ -22,7 +22,7 @@ class Client {
 
 public:
     Client();
-    Client(int socket);//, string nick);
+    Client(int socket, string nick);
 
     void setSocket(int socket);
     int getSocket();
