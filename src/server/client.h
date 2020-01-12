@@ -6,6 +6,8 @@
 #include <iostream>
 #include <cstdio>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 #include "commands.h"
 
 #define MAX_FAILS 10
@@ -17,7 +19,6 @@ class Client {
     string nick;
     int points;
     int remaining;
-    // bool letters[]; cpp nie zwraca list xD
     vector<bool> letters;
 
 public:

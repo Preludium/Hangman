@@ -7,6 +7,5 @@ SERVER:
     - Split code into more functions
 
 CLIENT:
-    1. Client button 'Ready' not working on countdown
 * technical:
     - Check all occurences of splitted strings

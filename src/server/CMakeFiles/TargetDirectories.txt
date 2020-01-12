@@ -1,0 +1,3 @@
+/mnt/c/Users/mikol/Desktop/Hangman/src/server/CMakeFiles/rebuild_cache.dir
+/mnt/c/Users/mikol/Desktop/Hangman/src/server/CMakeFiles/server.dir
+/mnt/c/Users/mikol/Desktop/Hangman/src/server/CMakeFiles/edit_cache.dir
