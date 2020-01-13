@@ -188,6 +188,15 @@ int countPlayingClients() {
     return c;
 }
 
+// CHECK
+// get sorted leaderboard by points, with PLAYER prefixes
+vector<string> getLeaderboard() {
+    vector<string> output;
+    for (auto client : clients)
+        output.push_back("PLAYER " + client.getNick() + to_string(client.getPoints()));
+    return output;
+}
+
 /// OK
 // inform clients about new game
 void notifyNewGame(int len) {
@@ -202,14 +211,21 @@ void notifyNewGame(int len) {
     clientsMtx.unlock();
 }
 
-/// TODO
+/// CHECK
 // inform clients about game over
 void notifyGameOver() {
+    char s[MAX_LEN];
+
     clientsMtx.lock();
+    sprintf(s, "%s %d", OVER, countPlayingClients());
+    vector<string> board = getLeaderboard();
+
     for (auto client : clients) {
-        if (client.getStatus())
-            client.sendMsg(OVER); // TODO: OVER <number of players>
-        // TODO: send leaderboard to each client
+        if (client.getStatus()) {
+            client.sendMsg(s);
+            for (string msg : board)
+                client.sendMsg(msg);
+        }
     }
     clientsMtx.unlock();
 }
@@ -250,7 +266,6 @@ void handleCountdownProcedure() {
     clock_t begClk = clock();
     int seconds = 0, elapsed = (clock() - begClk) / CLOCKS_PER_SEC;
 
-    // TODO: notify waiting clients about countdown
     printf("Starting countdown...\n"); 
     while (elapsed < COUNTDOWN_TIME) {
         int ready = poll(ppoll, clients_size, 0);
