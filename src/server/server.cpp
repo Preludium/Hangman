@@ -14,6 +14,8 @@
 #include <fstream>
 #include <fcntl.h>
 #include <poll.h>
+#include <condition_variable>
+
 #include "client.h"
 #include "colors.h"
 #include "commands.h"
@@ -32,6 +34,7 @@ vector<Client> clients;
 
 thread newClientsThread, gameThread;
 mutex clientsMtx;
+condition_variable newClientReady;
 
 bool readDatabase(string);
 void handleNewConnections();
@@ -149,6 +152,9 @@ void handleNewConnections() {
                 }
             }
         }
+
+        newClientReady.notify_one();
+
     }
 }
 
@@ -156,12 +162,11 @@ void handleNewConnections() {
 // wait for at least 2 clients
 void waitForClients() {
     printf("Waiting for at least 2 connected clients...\n");
+    
     int connectedClients = 0;
-    while (connectedClients < 2) {
-        clientsMtx.lock();
-        connectedClients = clients.size();
-        clientsMtx.unlock();
-    }
+    unique_lock<mutex> lck(clientsMtx);
+    newClientReady.wait(lck, [&]{return ( connectedClients = clients.size()) >= 2; });
+
     printf("%d connected clients, preparing for a new game...\n", connectedClients);
 }
 
@@ -194,12 +199,12 @@ int countPlayingClients() {
     return c;
 }
 
-// CHECK
+// OK
 // get sorted leaderboard by points, with PLAYER prefixes
 vector<string> getLeaderboard() {
     vector<string> output;
-    for (auto client : clients)
-        output.push_back("PLAYER " + client.getNick() + to_string(client.getPoints()));
+    for (auto client : clients) 
+        output.push_back("PLAYER " + client.getNick() + " " + to_string(client.getPoints()));
     return output;
 }
 
@@ -217,7 +222,7 @@ void notifyNewGame(int len) {
     clientsMtx.unlock();
 }
 
-/// CHECK
+/// OK
 // inform clients about game over
 void notifyGameOver() {
     char s[MAX_LEN];

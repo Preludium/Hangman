@@ -5,6 +5,7 @@ SERVER:
 * technical:
     - Check all mutex occurences and decide, whether somewhere is/isn't necessary
     - Split code into more functions
+    - Change each sprintf to string (sendMsg has string argument anyway)
 
 CLIENT:
 * technical:
