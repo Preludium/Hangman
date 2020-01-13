@@ -43,7 +43,10 @@ int main(int argc, char** argv) {
     rand(); rand();
 
     // TODO: parse arguments: 1 - database file, 2 - settings file (optional)
-    readDatabase("database.txt");
+    if (readDatabase("database.txt") == false) {
+        printf(RED "Reading database.txt error\n" RESET);
+        exit(EXIT_FAILURE);
+    }
 
     fcntl(0, F_SETFL, O_NONBLOCK);
     serverSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -58,7 +61,7 @@ int main(int argc, char** argv) {
 
     sockaddr_in addr;
     addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    addr.sin_addr.s_addr = INADDR_ANY;
     addr.sin_port = htons(8080);
 
     if (bind(serverSocket, (sockaddr*) &addr, sizeof(addr)) == -1) {
@@ -67,7 +70,10 @@ int main(int argc, char** argv) {
     }
 
     printf("Listening on 127.0.0.1, port 8080\n");
-    listen(serverSocket, 1);
+    if (listen(serverSocket, 1) == -1) {
+        perror(RED "Listen server socket error" RESET);
+        exit(EXIT_FAILURE);
+    }
 
     newClientsThread = thread(handleNewConnections);
     gameThread = thread(handleGame);
@@ -243,6 +249,20 @@ vector<int> findPositions(int wordNumber, char letter) {
     return output;
 }
 
+// if poll read error occurs, fd will be removed from memory
+void handlePollReadError(pollfd &ppoll) {
+    printf(RED "Poll read error, closing socket %d\n" RESET, ppoll.fd);
+    clientsMtx.lock();
+
+    int index = ppoll.fd;
+    auto pos = find_if(clients.begin(), clients.end(), [&index](Client& x){return x.getSocket() == index;});
+    clients.erase(pos);
+
+    clientsMtx.unlock();
+    close(ppoll.fd);
+    ppoll = {};
+}
+
 // OK
 // whole countdown handling 
 void handleCountdownProcedure() {
@@ -280,17 +300,7 @@ void handleCountdownProcedure() {
                 if (ppoll[i].revents & POLLIN) {
                     int len = read(ppoll[i].fd, message, MAX_LEN);
                     if (len <= 0) {
-                        printf(RED "Poll read error, closing socket %d\n" RESET, ppoll[i].fd);
-                        clientsMtx.lock();
-
-                        int index = ppoll[i].fd;
-                        auto pos = find_if(clients.begin(), clients.end(), [&index](Client& x){return x.getSocket() == index;});
-                        clients.erase(pos, pos+1);
-
-                        clientsMtx.unlock();
-                        close(ppoll[i].fd);
-                        ppoll[i] = {};
-                        //
+                        handlePollReadError(ppoll[i]);
                     } else {
                         printf("Poll on socket %d: %.*s\n", ppoll[i].fd, len, message);
                         if (strncmp(message, READY, sizeof(READY)-1) == 0) {
@@ -357,16 +367,7 @@ void handleGameProcedure() {
                 if (ppoll[i].revents & POLLIN) {
                     int len = read(ppoll[i].fd, message, MAX_LEN);
                     if (len <= 0) {
-                        printf(RED "Poll read error, closing socket %d\n" RESET, ppoll[i].fd);
-                        clientsMtx.lock();
-
-                        int index = ppoll[i].fd;
-                        auto pos = find_if(clients.begin(), clients.end(), [&index](Client& x){return x.getSocket() == index;});
-                        clients.erase(pos, pos+1);
-
-                        clientsMtx.unlock();
-                        close(ppoll[i].fd);
-                        ppoll[i] = {};
+                        handlePollReadError(ppoll[i]);
                     } else {
                         printf("Poll on socket %d: %.*s\n", ppoll[i].fd, len, message);
                         clientsMtx.lock();

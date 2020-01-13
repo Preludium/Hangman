@@ -37,7 +37,7 @@ string Client::getNick() {
     return this->nick;
 }
 
-void Client::setPoints(int num) {
+void Client::setPoints(int points) {
     this->points = points;
 }
 
@@ -65,17 +65,20 @@ void Client::addPoints(int num) {
     this->points += num;
 }
 
-// TODO: needs checking of write error handling 
+// TODO: needs checking of send error handling 
 //  (for now: server dies after sending message to disconnected client)
 void Client::sendMsg(string msg) {
     msg += "\n";
     char m[msg.size()+1];
     strcpy(m, msg.c_str());
-    int n = write(this->socket, m, sizeof(m));
-    if (n == -1) {
-        fprintf(stderr, "Writing to %s error : %s", this->nick.c_str(), strerror(errno));
-        // exit(EXIT_FAILURE);
+    // int n = write(this->socket, m, sizeof(m));
+    if(send(this->socket, m, sizeof(m), MSG_DONTWAIT) == -1) {
+            perror("Writing to client error");
     }
+    // if (n == -1) {
+    //     fprintf(stderr, "Writing to %s error : %s", this->nick.c_str(), strerror(errno));
+        // exit(EXIT_FAILURE);
+    // }
 }
 
 void Client::moveToPlaying() {

@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.1)
+project(Hangman)
+set (CMAKE_CXX_STANDARD 11)
+find_package (Threads)
+file ( GLOB SRCS *.cpp )
+add_executable ( server ${SRCS} )
+target_link_libraries ( server Threads::Threads )

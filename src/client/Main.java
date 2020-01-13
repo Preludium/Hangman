@@ -119,6 +119,8 @@ public class Main extends Application {
                     } else if (splt[0].contains(COUNT)) {
                         String time = splt[1];
                         controller.setMessageText("Game will start in " + time + " s");
+                        controller.disableAll();
+                        controller.getReadyBtn().setDisable(false);
                     } else if (splt[0].contains(OVER)) {
                         controller.setMessageText("Game ended");
                         players = Integer.parseInt(splt[1]);
@@ -134,7 +136,7 @@ public class Main extends Application {
                     } else if (splt[0].contains(WAIT)) {
                         controller.setMessageText("Waiting for min 2 clients to start countdown. Click ready to join");
                         controller.disableAll();
-                        controller.getReadyBtn().setDisable(false);
+//                        controller.getReadyBtn().setDisable(false);
                     } else if (splt[0].contains(GOOD)) {
                         controller.setMessageText("Successful guess");
                         char letter = splt[1].charAt(0);
