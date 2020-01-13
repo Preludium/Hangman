@@ -15,18 +15,19 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <condition_variable>
+#include <chrono>
 
 #include "client.h"
 #include "colors.h"
 #include "commands.h"
 
-#define COUNTDOWN_TIME 5
-#define GAME_TIME 10
-#define MAX_LEN 16
+#define MAX_LEN 32
 #define MAX_EVENTS 8
 
 using namespace std;
 const int one = 1;
+
+int COUNTDOWN_TIME = 5, GAME_TIME = 10;
 
 int serverSocket;
 vector<string> database;
@@ -45,7 +46,19 @@ int main(int argc, char** argv) {
     srand(time(NULL));
     rand(); rand();
 
-    // TODO: parse arguments: 1 - database file, 2 - settings file (optional)
+    // TODO: check
+    // parse arguments
+    if (argc == 3) {
+        try {
+            COUNTDOWN_TIME = stoi(argv[1]);
+            GAME_TIME = stoi(argv[2]);
+        }
+        catch(std::exception const & e) {
+            printf("Bad arguments - you should pass countdown time [s] and game time [s]\n");
+            return 1;
+        }
+    }
+
     if (readDatabase("database.txt") == false) {
         printf(RED "Reading database.txt error\n" RESET);
         exit(EXIT_FAILURE);
@@ -102,9 +115,9 @@ bool readDatabase(string filename) {
     return false;
 }
 
+// OK
 // check if given nick is available
 bool checkNick(string nick) {
-
     for(auto client : clients) {
         if (client.getNick().compare(nick) == 0)
             return false;
@@ -291,9 +304,12 @@ void handleCountdownProcedure() {
     clock_t begClk = clock();
     int seconds = 0, elapsed = (clock() - begClk) / CLOCKS_PER_SEC;
 
+    // auto end = chrono::system_clock::now();
+    // long toWait = chrono::duration_cast<chrono::milliseconds>(end - chrono::system_clock::now()).count();
+
     printf("Starting countdown...\n"); 
     while (elapsed < COUNTDOWN_TIME) {
-        int ready = poll(ppoll, clients_size, 0);
+        int ready = poll(ppoll, clients_size, 0); // TODO
         if (ready == -1) {
             perror(RED "Poll error" RESET);
             exit(1);
@@ -320,6 +336,8 @@ void handleCountdownProcedure() {
                             ppoll[i] = {};
                         }
                     }
+                } else if (ppoll[i].revents & POLLERR || ppoll[i].revents & POLLHUP) {
+                    handlePollReadError(ppoll[i]);
                 }
             }
         }
@@ -357,10 +375,9 @@ void handleGameProcedure() {
 
     char message[MAX_LEN];
     clock_t begClk = clock();
+    int active_clients = clients_size;
     int seconds = 0, elapsed = (clock() - begClk) / CLOCKS_PER_SEC;
     while (elapsed < GAME_TIME) {
-        // TODO: wait for events and give appropriate answer to clients
-        // TODO: if no players stay active, finish the game
         int ready = poll(ppoll, clients_size, 0);
         if (ready == -1) {
             perror(RED "Poll error" RESET);
@@ -373,6 +390,7 @@ void handleGameProcedure() {
                     int len = read(ppoll[i].fd, message, MAX_LEN);
                     if (len <= 0) {
                         handlePollReadError(ppoll[i]);
+                        --active_clients;
                     } else {
                         printf("Poll on socket %d: %.*s\n", ppoll[i].fd, len, message);
                         clientsMtx.lock();
@@ -382,7 +400,7 @@ void handleGameProcedure() {
 
                         clientsMtx.unlock();
 
-                        if (database.at(wordNumber).find(message[0]) != string::npos) {
+                        if (database.at(wordNumber).find(message[0]) != string::npos) { // TODO: BAD if already matched
                             vector<int> positions = findPositions(wordNumber, message[0]);
                             pos->addPoints(positions.size());
                             pos->notifyGood(message[0], positions);
@@ -401,9 +419,19 @@ void handleGameProcedure() {
                             }
                         }
                     }
+                } else if (ppoll[i].revents & POLLERR || ppoll[i].revents & POLLHUP) {
+                    handlePollReadError(ppoll[i]);
+                    --active_clients;
                 }
             }
         }
+
+        // TODO: check
+        if (active_clients < 2) {
+            printf("Not enough players left. Interrupting game...\n");
+            break;
+        }
+
         elapsed = (clock() - begClk) / CLOCKS_PER_SEC;
         if (elapsed > seconds)
             printf(YEL "Time elapsed: %d\n" RESET, ++seconds);
