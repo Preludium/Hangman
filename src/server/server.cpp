@@ -244,7 +244,7 @@ void handlePollReadError(pollfd &ppoll) {
 
     clientsMtx.unlock();
     close(ppoll.fd);
-    ppoll = {};
+    ppoll = -1;
 }
 
 // OK

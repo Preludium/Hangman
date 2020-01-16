@@ -39,7 +39,7 @@ public class Controller implements Initializable {
     public void initialize(URL url, ResourceBundle resourceBundle) {
         msgLbl.setWrapText(true);
         msgLbl.setTextAlignment(TextAlignment.CENTER);
-        sendBtn.setDisable(true);
+        sendBtn.setDisable(false);
         inputEdit.textProperty().addListener(new ChangeListener<String>() {
             @Override
             public void changed(ObservableValue<? extends String> observableValue, String oldValue, String newValue) {

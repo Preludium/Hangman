@@ -16,6 +16,8 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.stage.Stage;
 
+import java.io.*;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -38,6 +40,8 @@ public class Main extends Application {
     private String nick;
     private ArrayList<String> scoreBoard;
     private int players;
+    private String adress;
+    private int port;
 
     private Controller controller;
     private NetworkConnection connection;
@@ -52,6 +56,21 @@ public class Main extends Application {
         primaryStage.setResizable(false);
         primaryStage.show();
         setUp();
+    }
+
+    public void readServerAdress() {
+        URL path = Main.class.getResource("serverIp.txt");
+        try(BufferedReader br = new BufferedReader(new FileReader(new File(path.getFile())))) {
+            String[] list = br.readLine().split(":");
+            adress = list[0];
+            port = Integer.parseInt(list[1]);
+        } catch (IOException ex) {
+            controller.getMsgLbl().setText("serverIp.txt io error");
+            controller.disableAll();
+        } catch (Exception ex) {
+            controller.getMsgLbl().setText("something is wrong with server adress in serverIp.txt file");
+            controller.disableAll();
+        }
     }
 
     public void sendNick(){
@@ -74,7 +93,8 @@ public class Main extends Application {
     }
 
     public void setUp() {
-        connection = new Client("127.0.0.1", 8080, data -> {
+        readServerAdress();
+        connection = new Client(adress, port, data -> {
 //        Platform.runLater: If you need to update a GUI component from a non-GUI thread, you can use that to put
 //        your update in a queue and it will be handled by the GUI thread as soon as possible.
             Platform.runLater(() -> {
@@ -88,6 +108,7 @@ public class Main extends Application {
                         controller.setMessageText("Server closed connection");
                         controller.clearInputEdit();
                         controller.disableAll();
+                        controller.getPhraseLbl().setText("");
                         handleCloseConn();
                         reconnect();
                     } else if (splt[0].contains(ACCEPT)) {
@@ -160,8 +181,12 @@ public class Main extends Application {
                 }
             });
         });
-        controller.setMessageText("Type your nick");
-        controller.getSendBtn().setText("Confirm");
+
+        if (!controller.getInputEdit().isDisabled()) {
+            controller.setMessageText("Type your nick");
+            controller.getSendBtn().setText("Confirm");
+        }
+
         controller.getSendBtn().setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent actionEvent) {
@@ -188,7 +213,7 @@ public class Main extends Application {
 
         controller.getInputEdit().setTextFormatter(new TextFormatter<String>((TextFormatter.Change change) -> {
             String newText = change.getControlNewText();
-            if (newText.length() > 15) {
+            if (newText.length() > 15 || newText.contains(" ")) {
                 return null ;
             } else {
                 return change ;
