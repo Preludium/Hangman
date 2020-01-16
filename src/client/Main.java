@@ -148,7 +148,7 @@ public class Main extends Application {
                         scoreBoard = new ArrayList<>();
                         controller.disableAll();
                     } else if (splt[0].contains(PLAYER)) {
-                        scoreBoard.add(splt[1]);
+                        scoreBoard.add(splt[1] + " " + splt[2]);
                         if (scoreBoard.size() == players) {
                             controller.drawScoreBoard(scoreBoard);
                             players = 0;
