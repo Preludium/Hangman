@@ -40,8 +40,8 @@ public class Main extends Application {
     private String nick;
     private ArrayList<String> scoreBoard;
     private int players;
-    private String adress;
-    private int port;
+    private static String adress = "127.0.0.1";
+    private static int port = 8080;
 
     private Controller controller;
     private NetworkConnection connection;
@@ -58,20 +58,20 @@ public class Main extends Application {
         setUp();
     }
 
-    public void readServerAdress() {
-        URL path = Main.class.getResource("serverIp.txt");
-        try(BufferedReader br = new BufferedReader(new FileReader(new File(path.getFile())))) {
-            String[] list = br.readLine().split(":");
-            adress = list[0];
-            port = Integer.parseInt(list[1]);
-        } catch (IOException ex) {
-            controller.getMsgLbl().setText("serverIp.txt io error");
-            controller.disableAll();
-        } catch (Exception ex) {
-            controller.getMsgLbl().setText("something is wrong with server adress in serverIp.txt file");
-            controller.disableAll();
-        }
-    }
+//    public void readServerAdress() {
+//        URL path = Main.class.getResource("serverIp.txt");
+//        try(BufferedReader br = new BufferedReader(new FileReader(new File(path.getFile())))) {
+//            String[] list = br.readLine().split(":");
+//            adress = list[0];
+//            port = Integer.parseInt(list[1]);
+//        } catch (IOException ex) {
+//            controller.getMsgLbl().setText("serverIp.txt io error");
+//            controller.disableAll();
+//        } catch (Exception ex) {
+//            controller.getMsgLbl().setText("something is wrong with server adress in serverIp.txt file");
+//            controller.disableAll();
+//        }
+//    }
 
     public void sendNick(){
         connection.send("NICK " + nick);
@@ -93,13 +93,13 @@ public class Main extends Application {
     }
 
     public void setUp() {
-        readServerAdress();
+//        readServerAdress();
         connection = new Client(adress, port, data -> {
 //        Platform.runLater: If you need to update a GUI component from a non-GUI thread, you can use that to put
 //        your update in a queue and it will be handled by the GUI thread as soon as possible.
             Platform.runLater(() -> {
                 if (data != null) {
-                    System.out.println(data);
+//                    System.out.println(data);
                     String[] splt = data.split(" ");
                     if (data.equals("SERVER DOWN")) {
                         controller.setMessageText("Server is down. Reconnect or come back later...");
@@ -127,6 +127,8 @@ public class Main extends Application {
                         controller.disableAll();
                         handleCloseConn();
                         reconnect();
+                    }  else if (splt[0].contains(READY)) {
+                        controller.getMsgLbl().setText("Waiting for at least 2 clients to start game. You are ready");
                     } else if (splt[0].contains(GAME)) {
                         controller.setMessageText("Starting game");
                         int num = Integer.parseInt(splt[1]);
@@ -158,7 +160,6 @@ public class Main extends Application {
                     } else if (splt[0].contains(WAIT)) {
                         controller.setMessageText("Not enough players. Waiting for at least two...");
                         controller.disableAll();
-//                        controller.getReadyBtn().setDisable(false);
                     } else if (splt[0].contains(GOOD)) {
                         controller.setMessageText("Successful guess");
                         char letter = splt[1].charAt(0);
@@ -171,9 +172,10 @@ public class Main extends Application {
                     } else if (splt[0].contains(BAD)) {
                         int fails = Integer.parseInt(splt[1]);
                         if (fails > 0) {
-                            controller.setMessageText("Fail, " + splt[1]+ " chances left");
                             controller.drawImage(fails);
+                            controller.setMessageText("Fail, " + splt[1]+ " chances left");
                         } else {
+                            controller.drawImage(fails);
                             controller.setMessageText("Game over. Waiting for scoreboard");
                             controller.getInputEdit().setDisable(true);
                             controller.getSendBtn().setDisable(true);
@@ -249,7 +251,6 @@ public class Main extends Application {
             public void handle(ActionEvent actionEvent) {
                 connection.send(READY);
                 controller.getReadyBtn().setDisable(true);
-                controller.getMsgLbl().setText("Waiting for at least 2 clients to start game. You are ready");
             }
         });
 
@@ -293,6 +294,10 @@ public class Main extends Application {
     }
 
     public static void main(String[] args) {
+        if(args.length == 2) {
+            adress = args[0];
+            port = Integer.parseInt(args[1]);
+        }
         launch(args);
     }
 }
