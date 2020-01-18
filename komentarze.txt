@@ -1,3 +1,2 @@
-l284 - nie będziemy wybudzani na błędach stdin, bo uprzednio zamykamy deskryptor
 l287,288 - wywoływana jest funkcja sendMsg, która dodaje \0 na końcu
-* - jeśli odłączą się wszyscy klienci od gry, to gra toczy się dalej, zgodnie z przesłanym opisem projektu
+* - jeśli zostanie mniej niż 2 graczy w grze, to rozgrywka jest zatrzymywana
