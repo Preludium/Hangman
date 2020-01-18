@@ -10,7 +10,7 @@
 #include <sys/socket.h>
 #include "commands.h"
 
-#define MAX_FAILS 10
+#define MAX_FAILS 8
 using namespace std;
 
 class Client {
@@ -45,6 +45,8 @@ public:
     void swap();
     int noteFail();
     void notifyGood(char letter, vector<int> positions);
+    void setLettersViaPositions(char letter, vector<int> positions);
+    void resetRemaining();
 
     bool operator== (Client &rhs);
 

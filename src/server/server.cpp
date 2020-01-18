@@ -21,6 +21,9 @@
 #include "colors.h"
 #include "commands.h"
 
+#define WAITING false
+#define PLAYING true
+
 #define MAX_LEN 32
 #define MAX_EVENTS 8
 
@@ -175,6 +178,11 @@ void handleNewConnections() {
 // wait for at least 2 clients
 void waitForClients() {
     printf("Waiting for at least 2 connected clients...\n");
+
+    clientsMtx.lock();
+    for (auto client: clients)
+        client.sendMsg(WAIT);
+    clientsMtx.unlock();
     
     int connectedClients = 0;
     unique_lock<mutex> lck(clientsMtx);
@@ -197,7 +205,7 @@ void swapClients() {
 int countWaitingClients() {
     int c=0;
     for (auto client: clients)
-        if (!client.getStatus())
+        if (client.getStatus() == WAITING)
             ++c;
     return c;
 }
@@ -207,7 +215,7 @@ int countWaitingClients() {
 int countPlayingClients() {
     int c=0;
     for (auto client: clients)
-        if (client.getStatus())
+        if (client.getStatus() == PLAYING)
             ++c;
     return c;
 }
@@ -229,7 +237,7 @@ void notifyNewGame(int len) {
 
     clientsMtx.lock();
     for (auto client : clients) {
-        if (client.getStatus())
+        if (client.getStatus() == PLAYING)
             client.sendMsg(s);
     }
     clientsMtx.unlock();
@@ -241,15 +249,13 @@ void notifyGameOver() {
     char s[MAX_LEN];
 
     clientsMtx.lock();
-    sprintf(s, "%s %d", OVER, countPlayingClients());
+    sprintf(s, "%s %d", OVER, clients.size());
     vector<string> board = getLeaderboard();
 
     for (auto client : clients) {
-        if (client.getStatus()) {
-            client.sendMsg(s);
-            for (string msg : board)
-                client.sendMsg(msg);
-        }
+        client.sendMsg(s);
+        for (string msg : board)
+            client.sendMsg(msg);
     }
     clientsMtx.unlock();
 }
@@ -278,7 +284,7 @@ void handlePollReadError(pollfd &ppoll) {
 
     clientsMtx.unlock();
     close(ppoll.fd);
-    ppoll = -1;
+    ppoll.fd = -1;
 }
 
 // OK
@@ -289,7 +295,7 @@ void handleCountdownProcedure() {
     int iter = 0, clients_size = countWaitingClients();
     pollfd *ppoll = new pollfd[clients_size]{};
     for (auto client: clients) { // poll only waiting clients
-        if (!client.getStatus()) { // TODO: compare with const value
+        if (client.getStatus() == WAITING) { // TODO: compare with const value
             ppoll[iter].fd = client.getSocket();
             ppoll[iter].events = POLLIN;
             ++iter;
@@ -332,8 +338,8 @@ void handleCountdownProcedure() {
                             if (pos != clients.end()) pos->moveToPlaying();
 
                             clientsMtx.unlock();
-                            pos->sendMsg(ACCEPT); // notify user
-                            ppoll[i] = {};
+                            pos->sendMsg(READY); // notify user
+                            ppoll[i].fd = -1;
                         }
                     }
                 } else if (ppoll[i].revents & POLLERR || ppoll[i].revents & POLLHUP) {
@@ -361,10 +367,12 @@ void handleGameProcedure() {
     clientsMtx.lock();
     int iter=0, clients_size = countPlayingClients();
     pollfd *ppoll = new pollfd[clients_size]{};
-    for (auto client: clients) { // poll only playing clients
-        if (client.getStatus()) { // TODO: compare with const value
+    for (auto &client: clients) { // poll only playing clients
+        if (client.getStatus() == PLAYING) {
             ppoll[iter].fd = client.getSocket();
             ppoll[iter].events = POLLIN;
+            client.setLetters(vector<bool>(database.at(wordNumber).length()));
+            client.resetRemaining();
             ++iter;
         }
     }
@@ -400,10 +408,12 @@ void handleGameProcedure() {
 
                         clientsMtx.unlock();
 
-                        if (database.at(wordNumber).find(message[0]) != string::npos) { // TODO: BAD if already matched
+                        size_t position = database.at(wordNumber).find(message[0]);
+                        if (position != string::npos && !pos->getLetters().at(position)) {
                             vector<int> positions = findPositions(wordNumber, message[0]);
                             pos->addPoints(positions.size());
                             pos->notifyGood(message[0], positions);
+                            pos->setLettersViaPositions(message[0], positions);
 
                         } else {
                             int remaining = pos->noteFail();
@@ -412,10 +422,8 @@ void handleGameProcedure() {
                             pos->sendMsg(s);
 
                             if (remaining == 0) {
-                                clientsMtx.lock();
-                                if (pos != clients.end()) pos->moveToWaiting();
-                                clientsMtx.unlock();
-                                ppoll[i] = {};
+                                --active_clients;
+                                ppoll[i].fd = -1;
                             }
                         }
                     }
@@ -441,6 +449,7 @@ void handleGameProcedure() {
 
     printf("Game finished\n");
     notifyGameOver();
+    sleep(3);
 }
 
 /// OK
@@ -450,7 +459,7 @@ bool kickInactiveClients() {
     clientsMtx.lock();
 
     for (auto it = clients.begin(); it != clients.end(); ) {
-        if (!it->getStatus()) {
+        if (it->getStatus() == WAITING) {
             printf("Kicking client on socket %d\n", it->getSocket());
             it->sendMsg(KICK);
             close(it->getSocket());

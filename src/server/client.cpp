@@ -10,7 +10,6 @@ Client::Client(int socket, string nick) {
     this->status = false;
     this->points = 0;
     this->remaining = MAX_FAILS;
-    // this.letters;
 }
 
 void Client::setSocket(int socket) {
@@ -107,6 +106,15 @@ void Client::notifyGood(char letter, vector<int> positions) {
     }
     this->sendMsg(output);
     printf("%s\n", output.c_str());
+}
+
+void Client::setLettersViaPositions(char letter, vector<int> positions) {
+    for (auto pos: positions)
+        this->letters.at(pos) = true;
+}
+
+void Client::resetRemaining() {
+    this->remaining = MAX_FAILS;
 }
 
 // zmienic na porownanie nicku i socketa

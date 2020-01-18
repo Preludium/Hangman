@@ -99,6 +99,7 @@ public class Main extends Application {
 //        your update in a queue and it will be handled by the GUI thread as soon as possible.
             Platform.runLater(() -> {
                 if (data != null) {
+                    System.out.println(data);
                     String[] splt = data.split(" ");
                     if (data.equals("SERVER DOWN")) {
                         controller.setMessageText("Server is down. Reconnect or come back later...");
@@ -139,11 +140,11 @@ public class Main extends Application {
                         controller.getScoreBoard().setText("");
                     } else if (splt[0].contains(COUNT)) {
                         String time = splt[1];
-                        controller.setMessageText("Game will start in " + time + " s");
+                        controller.setMessageText("Game will start in " + time + " s. Please confirm you are ready");
                         controller.disableAll();
                         controller.getReadyBtn().setDisable(false);
                     } else if (splt[0].contains(OVER)) {
-                        controller.setMessageText("Game ended");
+                        controller.setMessageText("Game over");
                         players = Integer.parseInt(splt[1]);
                         scoreBoard = new ArrayList<>();
                         controller.disableAll();
@@ -155,7 +156,7 @@ public class Main extends Application {
                             scoreBoard = null;
                         }
                     } else if (splt[0].contains(WAIT)) {
-                        controller.setMessageText("Waiting for min 2 clients to start countdown. Click ready to join");
+                        controller.setMessageText("Not enough players. Waiting for at least two...");
                         controller.disableAll();
 //                        controller.getReadyBtn().setDisable(false);
                     } else if (splt[0].contains(GOOD)) {
@@ -248,7 +249,7 @@ public class Main extends Application {
             public void handle(ActionEvent actionEvent) {
                 connection.send(READY);
                 controller.getReadyBtn().setDisable(true);
-                controller.getMsgLbl().setText("Waiting for min 2 clients to start countdown. You are ready");
+                controller.getMsgLbl().setText("Waiting for at least 2 clients to start game. You are ready");
             }
         });
 
