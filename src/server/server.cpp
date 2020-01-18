@@ -33,6 +33,7 @@ const int one = 1;
 int COUNTDOWN_TIME = 5, GAME_TIME = 10;
 
 int serverSocket;
+bool isCountdown = false;
 vector<string> database;
 vector<Client> clients;
 
@@ -44,12 +45,13 @@ bool readDatabase(string);
 void handleNewConnections();
 void handleGame();
 
+// OK
+// main
 int main(int argc, char** argv) {
     // rand setup
     srand(time(NULL));
     rand(); rand();
 
-    // TODO: check
     // parse arguments
     if (argc == 3) {
         try {
@@ -61,6 +63,8 @@ int main(int argc, char** argv) {
             return 1;
         }
     }
+
+    printf("Server args: COUNTDOWN_TIME=%d, GAME_TIME=%d\n", COUNTDOWN_TIME, GAME_TIME);
 
     if (readDatabase("database.txt") == false) {
         printf(RED "Reading database.txt error\n" RESET);
@@ -157,6 +161,8 @@ void handleNewConnections() {
                     printf(GRN "New client connected on socket %d\n" RESET, clientSock);
                     newClient.sendMsg(ACCEPT);
 
+                    if (isCountdown)
+                        newClient.setStatus(PLAYING);
                     clientsMtx.lock();
                     clients.push_back(newClient);
                     clientsMtx.unlock();
@@ -232,8 +238,8 @@ vector<string> getLeaderboard() {
 /// OK
 // inform clients about new game
 void notifyNewGame(int len) {
-    char s[MAX_LEN];
-    sprintf(s, "%s %d", GAME, len);
+    string s = GAME;
+    s += " " + to_string(len);
 
     clientsMtx.lock();
     for (auto client : clients) {
@@ -246,10 +252,10 @@ void notifyNewGame(int len) {
 /// OK
 // inform clients about game over
 void notifyGameOver() {
-    char s[MAX_LEN];
+    string s = OVER;
 
     clientsMtx.lock();
-    sprintf(s, "%s %d", OVER, clients.size());
+    s += " " + to_string(clients.size());
     vector<string> board = getLeaderboard();
 
     for (auto client : clients) {
@@ -273,6 +279,7 @@ vector<int> findPositions(int wordNumber, char letter) {
     return output;
 }
 
+// OK
 // if poll read error occurs, fd will be removed from memory
 void handlePollReadError(pollfd &ppoll) {
     printf(RED "Poll read error, closing socket %d\n" RESET, ppoll.fd);
@@ -290,32 +297,35 @@ void handlePollReadError(pollfd &ppoll) {
 // OK
 // whole countdown handling 
 void handleCountdownProcedure() {
-    char s[MAX_LEN];
+    isCountdown = true;
+
+    string s = COUNT;
+    s += " " + to_string(COUNTDOWN_TIME);
+    
     clientsMtx.lock();
     int iter = 0, clients_size = countWaitingClients();
     pollfd *ppoll = new pollfd[clients_size]{};
+
     for (auto client: clients) { // poll only waiting clients
         if (client.getStatus() == WAITING) { // TODO: compare with const value
             ppoll[iter].fd = client.getSocket();
             ppoll[iter].events = POLLIN;
-            ++iter;
-
-            sprintf(s, "%s %d", COUNT, COUNTDOWN_TIME);
             client.sendMsg(s); // notify waiting client about countdown
+            ++iter;
         }
     }
     clientsMtx.unlock();
 
     char message[MAX_LEN];
-    clock_t begClk = clock();
-    int seconds = 0, elapsed = (clock() - begClk) / CLOCKS_PER_SEC;
+    //clock_t begClk = clock();
+    //int seconds = 0, elapsed = (clock() - begClk) / CLOCKS_PER_SEC;
 
-    // auto end = chrono::system_clock::now();
-    // long toWait = chrono::duration_cast<chrono::milliseconds>(end - chrono::system_clock::now()).count();
+    auto end = chrono::system_clock::now() + chrono::seconds(COUNTDOWN_TIME);
+    long toWait = chrono::duration_cast<chrono::milliseconds>(end - chrono::system_clock::now()).count();
 
-    printf("Starting countdown...\n"); 
-    while (elapsed < COUNTDOWN_TIME) {
-        int ready = poll(ppoll, clients_size, 0); // TODO
+    printf("Starting countdown of %ds...\n", COUNTDOWN_TIME); 
+    while (toWait > 0) {
+        int ready = poll(ppoll, clients_size, toWait);
         if (ready == -1) {
             perror(RED "Poll error" RESET);
             exit(1);
@@ -348,16 +358,18 @@ void handleCountdownProcedure() {
             }
         }
 
-        elapsed = (clock() - begClk) / CLOCKS_PER_SEC;
+        toWait = chrono::duration_cast<chrono::milliseconds>(end - chrono::system_clock::now()).count();
+        /*elapsed = (clock() - begClk) / CLOCKS_PER_SEC;
         if (elapsed > seconds)
-            printf(YEL "Time elapsed: %d\n" RESET, ++seconds);
+            printf(YEL "Time elapsed: %d\n" RESET, ++seconds);*/
 
     }
 
     delete[] ppoll;
+    isCountdown = false;
 }
 
-// TODO
+// OK
 // whole one game handling
 void handleGameProcedure() {
     printf("Starting new game...\n");
@@ -417,8 +429,8 @@ void handleGameProcedure() {
 
                         } else {
                             int remaining = pos->noteFail();
-                            char s[MAX_LEN];
-                            sprintf(s, "%s %d", BAD, remaining);
+                            string s = BAD;
+                            s += " " + to_string(remaining);
                             pos->sendMsg(s);
 
                             if (remaining == 0) {
