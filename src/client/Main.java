@@ -1,5 +1,6 @@
 package client;
 
+import com.sun.source.tree.Tree;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.property.BooleanProperty;
@@ -18,9 +19,8 @@ import javafx.stage.Stage;
 
 import java.io.*;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.text.ParseException;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class Main extends Application {
@@ -38,7 +38,7 @@ public class Main extends Application {
 
     private String phrase;
     private String nick;
-    private ArrayList<String> scoreBoard;
+    private Map<String, Integer> scoreBoard;
     private int players;
     private static String adress = "127.0.0.1";
     private static int port = 8080;
@@ -148,10 +148,10 @@ public class Main extends Application {
                     } else if (splt[0].contains(OVER)) {
                         controller.setMessageText("Game over");
                         players = Integer.parseInt(splt[1]);
-                        scoreBoard = new ArrayList<>();
+                        scoreBoard = new HashMap<>();
                         controller.disableAll();
                     } else if (splt[0].contains(PLAYER)) {
-                        scoreBoard.add(splt[1] + " " + splt[2]);
+                        scoreBoard.put(splt[1], Integer.parseInt(splt[2]));
                         if (scoreBoard.size() == players) {
                             controller.drawScoreBoard(scoreBoard);
                             players = 0;
@@ -296,7 +296,12 @@ public class Main extends Application {
     public static void main(String[] args) {
         if(args.length == 2) {
             adress = args[0];
-            port = Integer.parseInt(args[1]);
+            try {
+                port = Integer.parseInt(args[1]);
+            }
+            catch (NumberFormatException ex) {
+                System.out.println("Bad args, provide ./client <ip> <port>");
+            }
         }
         launch(args);
     }

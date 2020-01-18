@@ -1,5 +1,6 @@
 package client;
 
+import com.sun.source.tree.Tree;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.event.ActionEvent;
@@ -15,8 +16,8 @@ import javafx.scene.image.ImageView;
 import javafx.scene.text.TextAlignment;
 
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.ResourceBundle;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class Controller implements Initializable {
     @FXML
@@ -137,10 +138,18 @@ public class Controller implements Initializable {
         inputEdit.setDisable(true);
     }
 
-    public void drawScoreBoard(ArrayList<String> list) {
-        for (var player : list) {
-            String[] pom = player.split(" ");
-            scoreBoard.appendText(pom[0] + "\t" + pom[1] + "\n");
+    public void drawScoreBoard(Map<String, Integer> list) {
+        String key;
+        final Map<String, Integer> sortedByValue = list.entrySet()
+                .stream()
+                .sorted((Map.Entry.<String, Integer>comparingByValue().reversed()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
+
+        for (var entry : sortedByValue.entrySet()) {
+            key = entry.getKey();
+            if (entry.getKey().length() < 15)
+                key = entry.getKey() + " ".repeat(15 - entry.getKey().length());
+            scoreBoard.appendText(key + "\t\t" + entry.getValue() + "\n");
         }
     }
 
