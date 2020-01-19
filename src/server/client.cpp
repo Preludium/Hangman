@@ -70,10 +70,11 @@ void Client::sendMsg(string msg) {
     msg += "\n";
     char m[msg.size()+1];
     strcpy(m, msg.c_str());
-    // int n = write(this->socket, m, sizeof(m));
     if(send(this->socket, m, sizeof(m), MSG_DONTWAIT) == -1) {
-            perror("Writing to client error");
+        this->socket = -1;
+        perror("Writing to client error");
     }
+
     // if (n == -1) {
     //     fprintf(stderr, "Writing to %s error : %s", this->nick.c_str(), strerror(errno));
         // exit(EXIT_FAILURE);
