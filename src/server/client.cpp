@@ -96,7 +96,7 @@ int Client::notifyFail() {
     s += " " + to_string(this->remaining);
     sendMsg(s);
     printf("%s\n", s.c_str());
-    return --this->remaining;
+    return this->remaining--;
 }
 
 void Client::notifyGood(char letter, vector<int> positions) {
@@ -121,12 +121,11 @@ void Client::resetRemaining() {
 }
 
 bool Client::hasGuessedAll() {
-    int c=0;
+    unsigned int c = 0;
     for (bool l: this->letters) c += l;
     return c == this->letters.size();
 }
 
-// zmienic na porownanie nicku i socketa
 bool Client::operator== (Client &rhs) {
     if (this->socket == rhs.getSocket() && this->status == rhs.getStatus()) 
         return true;
