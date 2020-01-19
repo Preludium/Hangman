@@ -203,7 +203,7 @@ void waitForClients() {
     for (auto client: clients)
         client.sendMsg(WAIT);
     clientsMtx.unlock();
-    
+
     int connectedClients = 0;
     unique_lock<mutex> lck(clientsMtx);
     newClientReady.wait(lck, [&]{return ( connectedClients = clients.size()) >= 2; });
@@ -324,12 +324,13 @@ void handleCountdownProcedure() {
         if (client.getStatus() == WAITING) {
             ppoll[iter].fd = client.getSocket();
             ppoll[iter].events = POLLIN;
+
+            printf("%s\n", client.getNick().c_str());
             client.sendMsg(s); // notify waiting client about countdown
             ++iter;
         }
     }
     clientsMtx.unlock();
-
     char message[MAX_LEN];
 
     auto end = chrono::system_clock::now() + chrono::seconds(COUNTDOWN_TIME);
@@ -467,7 +468,7 @@ void handleGameProcedure() {
 
     printf(CYN "Game finished\n" RESET);
     notifyGameOver();
-    sleep(3);
+    sleep(1);
 }
 
 /// OK
