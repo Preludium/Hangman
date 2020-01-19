@@ -1,21 +1,22 @@
-#include <sys/socket.h>
+#include <algorithm>
 #include <arpa/inet.h>
-#include <netinet/in.h>
-#include <iostream>
+#include <chrono>
+#include <condition_variable>
 #include <cstdio>
+#include <ctime>
+#include <fcntl.h>
+#include <fstream>
+#include <iostream>
+#include <mutex>
+#include <netinet/in.h>
+#include <poll.h>
+#include <signal.h>
+#include <string.h>
+#include <sys/epoll.h>
+#include <sys/socket.h>
 #include <thread>
 #include <unistd.h>
 #include <vector>
-#include <mutex>
-#include <ctime>
-#include <sys/epoll.h>
-#include <algorithm>
-#include <string.h>
-#include <fstream>
-#include <fcntl.h>
-#include <poll.h>
-#include <condition_variable>
-#include <chrono>
 
 #include "client.h"
 #include "colors.h"
@@ -23,7 +24,6 @@
 
 #define WAITING false
 #define PLAYING true
-
 #define MAX_LEN 32
 #define MAX_EVENTS 8
 
@@ -31,6 +31,8 @@ using namespace std;
 const int one = 1;
 
 int COUNTDOWN_TIME = 5, GAME_TIME = 10;
+string ipAddress = "127.0.0.1";
+int port = 8080;
 
 int serverSocket;
 bool isCountdown = false;
@@ -41,7 +43,7 @@ thread newClientsThread, gameThread;
 mutex clientsMtx;
 condition_variable newClientReady;
 
-bool readDatabase(string);
+bool readConfig(string);
 void handleNewConnections();
 void handleGame();
 
@@ -54,22 +56,21 @@ int main(int argc, char** argv) {
 
     // parse arguments
     if (argc == 3) {
+        ipAddress = argv[1];
         try {
-            COUNTDOWN_TIME = stoi(argv[1]);
-            GAME_TIME = stoi(argv[2]);
-        }
-        catch(std::exception const & e) {
-            printf("Bad arguments - you should pass countdown time [s] and game time [s]\n");
-            return 1;
+            port = stoi(argv[2]);
+        } catch(std::exception const & e) {
+            printf(RED "Bad args - you should call: ./server [ip address] [port]\n" RESET);
+            exit(EXIT_FAILURE);
         }
     }
 
-    printf("Server args: COUNTDOWN_TIME=%d, GAME_TIME=%d\n", COUNTDOWN_TIME, GAME_TIME);
-
-    if (readDatabase("database.txt") == false) {
-        printf(RED "Reading database.txt error\n" RESET);
+    if (readConfig("config.txt") == false) {
+        printf(RED "Reading config.txt error\n" RESET);
         exit(EXIT_FAILURE);
     }
+
+    printf(MAG "Server configuration: COUNTDOWN_TIME=%d, GAME_TIME=%d\n" RESET, COUNTDOWN_TIME, GAME_TIME);
 
     fcntl(0, F_SETFL, O_NONBLOCK);
     serverSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -79,40 +80,53 @@ int main(int argc, char** argv) {
         exit(EXIT_FAILURE);
     }
 
-    printf("Starting server on socket %d\n", serverSocket);
+    printf(MAG "Starting server on socket %d\n" RESET, serverSocket);
     setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
 
     sockaddr_in addr;
     addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = INADDR_ANY;
-    addr.sin_port = htons(8080);
+    addr.sin_addr.s_addr = inet_addr(ipAddress.c_str());
+    addr.sin_port = htons(port);
 
     if (bind(serverSocket, (sockaddr*) &addr, sizeof(addr)) == -1) {
         perror(RED "Bind socket error" RESET);
         exit(EXIT_FAILURE);
     }
 
-    printf("Listening on 127.0.0.1, port 8080\n");
+    printf(MAG "Listening on %s, port %d...\n" RESET, ipAddress.c_str(), port);
     if (listen(serverSocket, 1) == -1) {
         perror(RED "Listen server socket error" RESET);
         exit(EXIT_FAILURE);
     }
 
+    signal(SIGPIPE, SIG_IGN);
     newClientsThread = thread(handleNewConnections);
     gameThread = thread(handleGame);
 
     newClientsThread.join();
     gameThread.join();
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 /// OK
-// reads words database from a file of a given name
-bool readDatabase(string filename) {
+// reads time and words database from a file of a given name
+bool readConfig(string filename) {
     ifstream file(filename);
     if (file.good()) {
         string word;
+
+        try {
+            file >> word;
+            COUNTDOWN_TIME = stoi(word);
+            file >> word;
+            GAME_TIME = stoi(word);
+        }
+        catch(std::exception const & e) {
+            printf(RED "Config file error - you should pass countdown time [s] and game time [s] in the first line\n" RESET);
+            return false;
+        }
+
         while (!file.eof()) {
             file >> word;
             database.push_back(word);
@@ -168,7 +182,7 @@ void handleNewConnections() {
                     clientsMtx.unlock();
                 }
                 else {
-                    printf(RED "Nick taken, client connection refused\n" RESET);
+                    printf(YEL "Nick taken, client connection refused\n" RESET);
                     write(clientSock, REFUSE, sizeof(REFUSE));
                     close(clientSock);
                 }
@@ -282,7 +296,7 @@ vector<int> findPositions(int wordNumber, char letter) {
 // OK
 // if poll read error occurs, fd will be removed from memory
 void handlePollReadError(pollfd &ppoll) {
-    printf(RED "Poll read error, closing socket %d\n" RESET, ppoll.fd);
+    printf(YEL "Poll read error, closing socket %d\n" RESET, ppoll.fd);
     clientsMtx.lock();
 
     int index = ppoll.fd;
@@ -307,7 +321,7 @@ void handleCountdownProcedure() {
     pollfd *ppoll = new pollfd[clients_size]{};
 
     for (auto client: clients) { // poll only waiting clients
-        if (client.getStatus() == WAITING) { // TODO: compare with const value
+        if (client.getStatus() == WAITING) {
             ppoll[iter].fd = client.getSocket();
             ppoll[iter].events = POLLIN;
             client.sendMsg(s); // notify waiting client about countdown
@@ -317,8 +331,6 @@ void handleCountdownProcedure() {
     clientsMtx.unlock();
 
     char message[MAX_LEN];
-    //clock_t begClk = clock();
-    //int seconds = 0, elapsed = (clock() - begClk) / CLOCKS_PER_SEC;
 
     auto end = chrono::system_clock::now() + chrono::seconds(COUNTDOWN_TIME);
     long toWait = chrono::duration_cast<chrono::milliseconds>(end - chrono::system_clock::now()).count();
@@ -332,7 +344,7 @@ void handleCountdownProcedure() {
         }
 
         else if (ready > 0) {
-            printf("Ready events: %d\n", ready);
+            //printf("Ready events: %d\n", ready);
             for (int i=0; i<clients_size; ++i) {
                 if (ppoll[i].revents & POLLIN) {
                     int len = read(ppoll[i].fd, message, MAX_LEN);
@@ -359,10 +371,6 @@ void handleCountdownProcedure() {
         }
 
         toWait = chrono::duration_cast<chrono::milliseconds>(end - chrono::system_clock::now()).count();
-        /*elapsed = (clock() - begClk) / CLOCKS_PER_SEC;
-        if (elapsed > seconds)
-            printf(YEL "Time elapsed: %d\n" RESET, ++seconds);*/
-
     }
 
     delete[] ppoll;
@@ -390,21 +398,24 @@ void handleGameProcedure() {
     }
     clientsMtx.unlock();
 
-    printf("GO!\n");
+    printf(CYN "GO!\n" RESET);
     notifyNewGame(database.at(wordNumber).length());
 
+    bool wordGuessed = false;
     char message[MAX_LEN];
-    clock_t begClk = clock();
     int active_clients = clients_size;
-    int seconds = 0, elapsed = (clock() - begClk) / CLOCKS_PER_SEC;
-    while (elapsed < GAME_TIME) {
-        int ready = poll(ppoll, clients_size, 0);
+
+    auto end = chrono::system_clock::now() + chrono::seconds(GAME_TIME);
+    long toWait = chrono::duration_cast<chrono::milliseconds>(end - chrono::system_clock::now()).count();
+
+    while (toWait > 0 && !wordGuessed) {
+        int ready = poll(ppoll, clients_size, toWait);
         if (ready == -1) {
             perror(RED "Poll error" RESET);
             exit(1);
         }
         else if (ready > 0) {
-            printf("Ready events: %d\n", ready);
+            //printf("Ready events: %d\n", ready);
             for (int i=0; i<clients_size; ++i) {
                 if (ppoll[i].revents & POLLIN) {
                     int len = read(ppoll[i].fd, message, MAX_LEN);
@@ -412,7 +423,7 @@ void handleGameProcedure() {
                         handlePollReadError(ppoll[i]);
                         --active_clients;
                     } else {
-                        printf("Poll on socket %d: %.*s\n", ppoll[i].fd, len, message);
+                        printf(CYN "Poll on socket %d: %.*s\n" RESET, ppoll[i].fd, len, message);
                         clientsMtx.lock();
 
                         int index = ppoll[i].fd;
@@ -426,13 +437,11 @@ void handleGameProcedure() {
                             pos->addPoints(positions.size());
                             pos->notifyGood(message[0], positions);
                             pos->setLettersViaPositions(message[0], positions);
+                            if (pos->hasGuessedAll())
+                                wordGuessed = true;
 
                         } else {
-                            int remaining = pos->noteFail();
-                            string s = BAD;
-                            s += " " + to_string(remaining);
-                            pos->sendMsg(s);
-
+                            int remaining = pos->notifyFail();
                             if (remaining == 0) {
                                 --active_clients;
                                 ppoll[i].fd = -1;
@@ -446,20 +455,17 @@ void handleGameProcedure() {
             }
         }
 
-        // TODO: check
         if (active_clients < 2) {
-            printf("Not enough players left. Interrupting game...\n");
+            printf(CYN "Not enough players left. Interrupting game...\n" RESET);
             break;
         }
 
-        elapsed = (clock() - begClk) / CLOCKS_PER_SEC;
-        if (elapsed > seconds)
-            printf(YEL "Time elapsed: %d\n" RESET, ++seconds);
+        toWait = chrono::duration_cast<chrono::milliseconds>(end - chrono::system_clock::now()).count();
     }
 
     delete[] ppoll;
 
-    printf("Game finished\n");
+    printf(CYN "Game finished\n" RESET);
     notifyGameOver();
     sleep(3);
 }
@@ -472,7 +478,7 @@ bool kickInactiveClients() {
 
     for (auto it = clients.begin(); it != clients.end(); ) {
         if (it->getStatus() == WAITING) {
-            printf("Kicking client on socket %d\n", it->getSocket());
+            printf(YEL "Kicking client on socket %d\n" RESET, it->getSocket());
             it->sendMsg(KICK);
             close(it->getSocket());
             it = clients.erase(it);
@@ -484,7 +490,7 @@ bool kickInactiveClients() {
 
     // if not enough players
     if (clients.size() < 2) {
-        printf("Not enough players, canceling game\n");
+        printf("Not enough players, aborting game\n");
         clientsMtx.unlock();
         return false;
     }

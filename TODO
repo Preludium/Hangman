@@ -6,10 +6,10 @@ SERVER:
     -- 3. When client tries the same letter twice or more, the server notes fail and sends BAD each time
     -- 4. Change sprintf to string
     -- 5. Poll loop takes 100% processor time; set time to wait
-    6. sendMsg() needs check, if client is still connected
+    -- 6. sendMsg() needs check, if client is still connected
 * technical:
     -- - Check all mutex occurences and decide, whether somewhere is/isn't necessary
-    - Split code into more functions
+    -- - Split code into more functions
     -- - Change each sprintf to string (sendMsg has string argument anyway)
 
 CLIENT:

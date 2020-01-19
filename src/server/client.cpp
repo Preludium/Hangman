@@ -64,20 +64,19 @@ void Client::addPoints(int num) {
     this->points += num;
 }
 
-// TODO: needs checking of send error handling 
-//  (for now: server dies after sending message to disconnected client)
 void Client::sendMsg(string msg) {
+    // handle socket ignore
+    if (this->socket == -1)
+        return;
+
     msg += "\n";
     char m[msg.size()+1];
     strcpy(m, msg.c_str());
-    // int n = write(this->socket, m, sizeof(m));
+
     if(send(this->socket, m, sizeof(m), MSG_DONTWAIT) == -1) {
-            perror("Writing to client error");
+        this->socket = -1;
+        printf("Error while writing to client\n");
     }
-    // if (n == -1) {
-    //     fprintf(stderr, "Writing to %s error : %s", this->nick.c_str(), strerror(errno));
-        // exit(EXIT_FAILURE);
-    // }
 }
 
 void Client::moveToPlaying() {
@@ -92,7 +91,11 @@ void Client::swap() {
     this->status = !this->status;
 }
 
-int Client::noteFail() {
+int Client::notifyFail() {
+    string s = BAD;
+    s += " " + to_string(this->remaining);
+    sendMsg(s);
+    printf("%s\n", s.c_str());
     return --this->remaining;
 }
 
@@ -115,6 +118,12 @@ void Client::setLettersViaPositions(char letter, vector<int> positions) {
 
 void Client::resetRemaining() {
     this->remaining = MAX_FAILS;
+}
+
+bool Client::hasGuessedAll() {
+    int c=0;
+    for (bool l: this->letters) c += l;
+    return c == this->letters.size();
 }
 
 // zmienic na porownanie nicku i socketa

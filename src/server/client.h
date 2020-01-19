@@ -44,10 +44,11 @@ public:
     void moveToPlaying();
     void moveToWaiting();
     void swap();
-    int noteFail();
+    int notifyFail();
     void notifyGood(char letter, vector<int> positions);
     void setLettersViaPositions(char letter, vector<int> positions);
     void resetRemaining();
+    bool hasGuessedAll();
 
     bool operator== (Client &rhs);
 
