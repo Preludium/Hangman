@@ -1,0 +1,2 @@
+l287,288 - wywoływana jest funkcja sendMsg, która dodaje \0 na końcu
+* - jeśli zostanie mniej niż 2 graczy w grze, to rozgrywka jest zatrzymywana

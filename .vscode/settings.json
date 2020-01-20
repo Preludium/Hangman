@@ -5,6 +5,13 @@
         "fstream": "cpp",
         "*.tcc": "cpp",
         "condition_variable": "cpp",
-        "thread": "cpp"
+        "thread": "cpp",
+        "ctime": "cpp",
+        "iostream": "cpp",
+        "cstdio": "cpp",
+        "deque": "cpp",
+        "string": "cpp",
+        "vector": "cpp",
+        "chrono": "cpp"
     }
 }
