@@ -84,7 +84,7 @@ public class Main extends Application {
             @Override
             public void handle(ActionEvent actionEvent) {
                 controller.getInputEdit().setDisable(false);
-                controller.getSendBtn().setDisable(false);
+                controller.getSendBtn().setDisable(true);
                 setUp();
                 controller.getReadyBtn().setDisable(true);
                 controller.getReadyBtn().setText("Ready");
@@ -106,7 +106,7 @@ public class Main extends Application {
                         controller.disableAll();
                         reconnect();
                     } else if (data.equals("SERVER CLOSED")) {
-                        controller.setMessageText("Server closed connection");
+                        controller.setMessageText(controller.getMsgLbl().getText() + " \nServer closed connection");
                         controller.clearInputEdit();
                         controller.disableAll();
                         controller.getPhraseLbl().setText("");
@@ -160,6 +160,7 @@ public class Main extends Application {
                     } else if (splt[0].contains(WAIT)) {
                         controller.setMessageText("Not enough players. Waiting for at least two...");
                         controller.disableAll();
+
                     } else if (splt[0].contains(GOOD)) {
                         controller.setMessageText("Successful guess");
                         char letter = splt[1].charAt(0);
@@ -173,7 +174,7 @@ public class Main extends Application {
                         int fails = Integer.parseInt(splt[1]);
                         if (fails > 0) {
                             controller.drawImage(fails);
-                            controller.setMessageText("Fail, " + splt[1]+ " chances left");
+                            controller.setMessageText("Fail, " + fails + " chances left");
                         } else {
                             controller.drawImage(fails);
                             controller.setMessageText("Game over. Waiting for scoreboard");
@@ -188,6 +189,7 @@ public class Main extends Application {
         if (!controller.getInputEdit().isDisabled()) {
             controller.setMessageText("Type your nick");
             controller.getSendBtn().setText("Confirm");
+            controller.getSendBtn().setDisable(true);
         }
 
         controller.getSendBtn().setOnAction(new EventHandler<ActionEvent>() {

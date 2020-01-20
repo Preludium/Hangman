@@ -11,7 +11,7 @@
 #include <fcntl.h>
 #include "commands.h"
 
-#define MAX_FAILS 8
+#define MAX_FAILS 7
 using namespace std;
 
 class Client {
