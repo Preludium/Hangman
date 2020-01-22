@@ -153,6 +153,7 @@ bool checkNick(string nick) {
 void handleNewConnections() {
     while(true) {
         int clientSock = accept(serverSocket, nullptr, nullptr);
+        printf("New client connected on socket %d\n", clientSock);
 
         if (clientSock == -1) {
             perror(RED "Client socket creation error" RESET);
@@ -184,7 +185,7 @@ void handleNewConnections() {
                 if (checkNick(nick)) {
                     Client newClient(clientSock, nick);
 
-                    printf(GRN "New client connected on socket %d\n" RESET, clientSock);
+                    printf(GRN "Client joined successfully\n" RESET);
                     newClient.sendMsg(ACCEPT);
 
                     if (isCountdown)
