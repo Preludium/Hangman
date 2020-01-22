@@ -46,6 +46,7 @@ public abstract class NetworkConnection {
         @Override
         public void run() {
             Socket socket = null;
+
             for(int i = 0; i < 6; i++) {
                 try {
                     socket = new Socket(getIP(), getPort());
@@ -73,7 +74,6 @@ public abstract class NetworkConnection {
                         onReceiveCallback.accept("SERVER CLOSED");
                         break;
                     }
-//                    System.out.println(line);
                     onReceiveCallback.accept(line);
                 }
             } catch (Exception e) {
