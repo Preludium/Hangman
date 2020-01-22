@@ -2,6 +2,8 @@ package client;
 
 import java.io.*;
 import java.net.Socket;
+import java.net.UnknownHostException;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 public abstract class NetworkConnection {
@@ -28,6 +30,7 @@ public abstract class NetworkConnection {
     }
 
     public void closeConnection() throws Exception {
+        Main.socketCreatedProperty.setValue(false);
         if(connThread.socket != null)
             connThread.socket.close();
     }
@@ -42,21 +45,34 @@ public abstract class NetworkConnection {
 
         @Override
         public void run() {
-            try (Socket socket = new Socket(getIP(), getPort());
-                 BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            Socket socket = null;
+            for(int i = 0; i < 6; i++) {
+                try {
+                    socket = new Socket(getIP(), getPort());
+                    if (socket != null) {
+                        break;
+                    }
+                    TimeUnit.MILLISECONDS.sleep(500);
+                } catch (IOException | InterruptedException e) {
+                    onReceiveCallback.accept("SERVER DOWN");
+                    return;
+                }
+            }
+
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                  PrintWriter out = new PrintWriter(socket.getOutputStream())) {
 
-                this.socket = socket;
                 this.out = out;
+                this.socket = socket;
+                this.socket.setTcpNoDelay(true);
+                onReceiveCallback.accept("SOCKET CREATED");
 
-                socket.setTcpNoDelay(true);
                 while(true) {
                     String line = in.readLine();
                     if (line == null) {
                         onReceiveCallback.accept("SERVER CLOSED");
                         break;
                     }
-
 //                    System.out.println(line);
                     onReceiveCallback.accept(line);
                 }

@@ -15,12 +15,14 @@ import javafx.scene.Scene;
 import javafx.scene.control.TextFormatter;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.paint.Stop;
 import javafx.stage.Stage;
 
 import java.io.*;
 import java.net.URL;
 import java.text.ParseException;
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 public class Main extends Application {
@@ -45,6 +47,7 @@ public class Main extends Application {
 
     private Controller controller;
     private NetworkConnection connection;
+    public static BooleanProperty socketCreatedProperty = new SimpleBooleanProperty(false);
 
     @Override
     public void start(Stage primaryStage) throws Exception{
@@ -181,6 +184,8 @@ public class Main extends Application {
                             controller.getInputEdit().setDisable(true);
                             controller.getSendBtn().setDisable(true);
                         }
+                    } else if (data.contains("SOCKET CREATED")) {
+                        setUpAfterNick();
                     }
                 }
             });
@@ -198,7 +203,9 @@ public class Main extends Application {
                 nick = controller.getInputEditText();
                 controller.clearInputEdit();
                 controller.setMessageText("Connecting to server...");
-                setUpAfterNick();
+//                setUpAfterNick();
+                connection.startConnection();
+                controller.getInputEdit()   .setDisable(true);
             }
         });
 
@@ -210,7 +217,9 @@ public class Main extends Application {
                         nick = controller.getInputEditText();
                         controller.clearInputEdit();
                         controller.setMessageText("Connecting to server...");
-                        setUpAfterNick();
+//                        setUpAfterNick();
+                        connection.startConnection();
+                        controller.getInputEdit().setDisable(true);
                     }
                 }
             }
@@ -227,15 +236,8 @@ public class Main extends Application {
     }
 
     public void setUpAfterNick() {
-        connection.startConnection();
-        try {
-            TimeUnit.MILLISECONDS.sleep(5);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
 
-        if(connection.getSocket() != null)
-            sendNick();
+        sendNick();
 
         controller.getSendBtn().setText("Send");
         controller.getInputEdit().setDisable(true);
