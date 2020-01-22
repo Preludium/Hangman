@@ -15,12 +15,14 @@ import javafx.scene.Scene;
 import javafx.scene.control.TextFormatter;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.paint.Stop;
 import javafx.stage.Stage;
 
 import java.io.*;
 import java.net.URL;
 import java.text.ParseException;
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 public class Main extends Application {
@@ -45,6 +47,7 @@ public class Main extends Application {
 
     private Controller controller;
     private NetworkConnection connection;
+    public static BooleanProperty socketCreatedProperty = new SimpleBooleanProperty(false);
 
     @Override
     public void start(Stage primaryStage) throws Exception{
@@ -57,21 +60,6 @@ public class Main extends Application {
         primaryStage.show();
         setUp();
     }
-
-//    public void readServerAdress() {
-//        URL path = Main.class.getResource("serverIp.txt");
-//        try(BufferedReader br = new BufferedReader(new FileReader(new File(path.getFile())))) {
-//            String[] list = br.readLine().split(":");
-//            adress = list[0];
-//            port = Integer.parseInt(list[1]);
-//        } catch (IOException ex) {
-//            controller.getMsgLbl().setText("serverIp.txt io error");
-//            controller.disableAll();
-//        } catch (Exception ex) {
-//            controller.getMsgLbl().setText("something is wrong with server adress in serverIp.txt file");
-//            controller.disableAll();
-//        }
-//    }
 
     public void sendNick(){
         connection.send("NICK " + nick);
@@ -93,13 +81,9 @@ public class Main extends Application {
     }
 
     public void setUp() {
-//        readServerAdress();
         connection = new Client(adress, port, data -> {
-//        Platform.runLater: If you need to update a GUI component from a non-GUI thread, you can use that to put
-//        your update in a queue and it will be handled by the GUI thread as soon as possible.
             Platform.runLater(() -> {
                 if (data != null) {
-//                    System.out.println(data);
                     String[] splt = data.split(" ");
                     if (data.equals("SERVER DOWN")) {
                         controller.setMessageText("Server is down. Reconnect or come back later...");
@@ -159,6 +143,7 @@ public class Main extends Application {
                         }
                     } else if (splt[0].contains(WAIT)) {
                         controller.setMessageText("Not enough players. Waiting for at least two...");
+                        controller.getPhraseLbl().setText("");
                         controller.disableAll();
 
                     } else if (splt[0].contains(GOOD)) {
@@ -181,6 +166,8 @@ public class Main extends Application {
                             controller.getInputEdit().setDisable(true);
                             controller.getSendBtn().setDisable(true);
                         }
+                    } else if (data.contains("SOCKET CREATED")) {
+                        setUpAfterNick();
                     }
                 }
             });
@@ -198,7 +185,8 @@ public class Main extends Application {
                 nick = controller.getInputEditText();
                 controller.clearInputEdit();
                 controller.setMessageText("Connecting to server...");
-                setUpAfterNick();
+                connection.startConnection();
+                controller.getInputEdit()   .setDisable(true);
             }
         });
 
@@ -210,7 +198,8 @@ public class Main extends Application {
                         nick = controller.getInputEditText();
                         controller.clearInputEdit();
                         controller.setMessageText("Connecting to server...");
-                        setUpAfterNick();
+                        connection.startConnection();
+                        controller.getInputEdit().setDisable(true);
                     }
                 }
             }
@@ -227,15 +216,8 @@ public class Main extends Application {
     }
 
     public void setUpAfterNick() {
-        connection.startConnection();
-        try {
-            TimeUnit.MILLISECONDS.sleep(5);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
 
-        if(connection.getSocket() != null)
-            sendNick();
+        sendNick();
 
         controller.getSendBtn().setText("Send");
         controller.getInputEdit().setDisable(true);

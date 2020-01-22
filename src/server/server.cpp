@@ -26,6 +26,7 @@
 #define PLAYING true
 #define MAX_LEN 32
 #define MAX_EVENTS 8
+#define NICK_TIMEOUT 1000 //ms
 
 using namespace std;
 const int one = 1;
@@ -152,6 +153,7 @@ bool checkNick(string nick) {
 void handleNewConnections() {
     while(true) {
         int clientSock = accept(serverSocket, nullptr, nullptr);
+        printf("New client connected on socket %d\n", clientSock);
 
         if (clientSock == -1) {
             perror(RED "Client socket creation error" RESET);
@@ -161,8 +163,19 @@ void handleNewConnections() {
         char buf[MAX_LEN];
         int len;
 
-        if((len = read(clientSock, buf, sizeof(buf))) <= 0) {
-            perror(RED "Client socket read error" RESET);
+        pollfd fd;
+        fd.fd = clientSock;
+        fd.events = POLLIN;
+
+        if (poll(&fd, 1, NICK_TIMEOUT) != 1) {
+            printf(YEL "Client nick submission timed out, closing socket %d\n" RESET, clientSock);
+            close(clientSock);
+            continue;
+        }
+
+        if((len = read(clientSock, buf, sizeof(buf))) < 0) {
+            perror(RED "Client socket read error, closing socket" RESET);
+            close(clientSock);
             continue;
         }
         else {
@@ -172,7 +185,7 @@ void handleNewConnections() {
                 if (checkNick(nick)) {
                     Client newClient(clientSock, nick);
 
-                    printf(GRN "New client connected on socket %d\n" RESET, clientSock);
+                    printf(GRN "Client joined successfully\n" RESET);
                     newClient.sendMsg(ACCEPT);
 
                     if (isCountdown)
@@ -185,12 +198,16 @@ void handleNewConnections() {
                     printf(YEL "Nick taken, client connection refused\n" RESET);
                     write(clientSock, REFUSE, sizeof(REFUSE));
                     close(clientSock);
+                    continue;
                 }
+            } else { // bad request
+                printf(YEL "Bad nick request from client, closing socket %d\n" RESET, clientSock);
+                close(clientSock);
+                continue;
             }
         }
 
         newClientReady.notify_one();
-
     }
 }
 
